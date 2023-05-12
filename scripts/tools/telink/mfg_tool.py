@@ -53,14 +53,11 @@ ROTATING_DEVICE_ID_UNIQUE_ID_LEN_BITS = 128
 HEX_PREFIX = "hex:"
 DEV_SN_CSV_HDR = "Serial Number,\n"
 
-NVS_MEMORY = dict()
+NVS_MEMORY = {}
 
 
 def nvs_memory_append(key, value):
-    if isinstance(value, str):
-        NVS_MEMORY[key] = value.encode("utf-8")
-    else:
-        NVS_MEMORY[key] = value
+    NVS_MEMORY[key] = value.encode("utf-8") if isinstance(value, str) else value
 
 
 def nvs_memory_update(key, value):
@@ -99,21 +96,21 @@ def check_tools_exists(args):
         sys.exit(1)
 
     logger.debug('Using following tools:')
-    logger.debug('spake2p:    {}'.format(TOOLS['spake2p']))
-    logger.debug('chip-cert:  {}'.format(TOOLS['chip-cert']))
-    logger.debug('chip-tool:  {}'.format(TOOLS['chip-tool']))
+    logger.debug(f"spake2p:    {TOOLS['spake2p']}")
+    logger.debug(f"chip-cert:  {TOOLS['chip-cert']}")
+    logger.debug(f"chip-tool:  {TOOLS['chip-tool']}")
 
 
 def execute_cmd(cmd):
-    logger.debug('Executing Command: {}'.format(cmd))
+    logger.debug(f'Executing Command: {cmd}')
     status = subprocess.run(cmd, capture_output=True)
 
     try:
         status.check_returncode()
     except subprocess.CalledProcessError as e:
         if status.stderr:
-            logger.error('[stderr]: {}'.format(status.stderr.decode('utf-8').strip()))
-        logger.error('Command failed with error: {}'.format(e))
+            logger.error(f"[stderr]: {status.stderr.decode('utf-8').strip()}")
+        logger.error(f'Command failed with error: {e}')
         sys.exit(1)
 
 
@@ -137,8 +134,7 @@ def read_der_file(path: str):
     logger.debug("Reading der file {}...", path)
     try:
         with open(path, 'rb') as f:
-            data = f.read()
-            return data
+            return f.read()
     except IOError as e:
         logger.error(e)
         raise e
@@ -147,10 +143,7 @@ def read_der_file(path: str):
 def read_key_bin_file(path: str):
     try:
         with open(path, 'rb') as file:
-            key_data = file.read()
-
-            return key_data
-
+            return file.read()
     except IOError or ValueError:
         return None
 
@@ -208,10 +201,11 @@ def generate_passcode(args, out_dirs):
 
 def generate_discriminator(args, out_dirs):
     # If discriminator is provided, use it
-    if args.discriminator:
-        disc = args.discriminator
-    else:
-        disc = random.randint(0x0000, 0x0FFF)
+    disc = (
+        args.discriminator
+        if args.discriminator
+        else random.randint(0x0000, 0x0FFF)
+    )
     # Append discriminator to each line of the passcode file
     with open(os.sep.join([out_dirs['output'], 'pin.csv']), 'r') as fd:
         lines = fd.readlines()
@@ -228,11 +222,16 @@ def generate_discriminator(args, out_dirs):
 
 def generate_pai_certs(args, ca_key, ca_cert, out_key, out_cert):
     cmd = [
-        TOOLS['chip-cert'], 'gen-att-cert',
-        '--type', 'i',
-        '--subject-cn', '"{} PAI {}"'.format(args.cn_prefix, '00'),
-        '--out-key', out_key,
-        '--out', out_cert,
+        TOOLS['chip-cert'],
+        'gen-att-cert',
+        '--type',
+        'i',
+        '--subject-cn',
+        f'"{args.cn_prefix} PAI 00"',
+        '--out-key',
+        out_key,
+        '--out',
+        out_cert,
     ]
 
     if args.lifetime:
@@ -248,8 +247,8 @@ def generate_pai_certs(args, ca_key, ca_cert, out_key, out_cert):
     ])
 
     execute_cmd(cmd)
-    logger.info('Generated PAI certificate: {}'.format(out_cert))
-    logger.info('Generated PAI private key: {}'.format(out_key))
+    logger.info(f'Generated PAI certificate: {out_cert}')
+    logger.info(f'Generated PAI private key: {out_key}')
 
 
 def setup_root_certificates(args, dirs):
@@ -267,16 +266,15 @@ def setup_root_certificates(args, dirs):
 
         generate_pai_certs(args, args.key, args.cert, pai_cert['key_pem'], pai_cert['cert_pem'])
         convert_x509_cert_from_pem_to_der(pai_cert['cert_pem'], pai_cert['cert_der'])
-        logger.info('Generated PAI certificate in DER format: {}'.format(pai_cert['cert_der']))
+        logger.info(f"Generated PAI certificate in DER format: {pai_cert['cert_der']}")
 
-    # If PAI is passed as input, generate DACs
     elif args.pai:
         pai_cert['cert_pem'] = args.cert
         pai_cert['key_pem'] = args.key
         pai_cert['cert_der'] = os.sep.join([dirs['internal'], 'pai_cert.der'])
 
         convert_x509_cert_from_pem_to_der(pai_cert['cert_pem'], pai_cert['cert_der'])
-        logger.info('Generated PAI certificate in DER format: {}'.format(pai_cert['cert_der']))
+        logger.info(f"Generated PAI certificate in DER format: {pai_cert['cert_der']}")
 
     return pai_cert
 
@@ -309,11 +307,16 @@ def generate_dac_cert(iteration, args, out_dirs, discriminator, passcode, ca_key
     out_public_key_bin = out_key_pem.replace('key.pem', 'public_key.bin')
 
     cmd = [
-        TOOLS['chip-cert'], 'gen-att-cert',
-        '--type', 'd',
-        '--subject-cn', '"{} DAC {}"'.format(args.cn_prefix, iteration),
-        '--out-key', out_key_pem,
-        '--out', out_cert_pem,
+        TOOLS['chip-cert'],
+        'gen-att-cert',
+        '--type',
+        'd',
+        '--subject-cn',
+        f'"{args.cn_prefix} DAC {iteration}"',
+        '--out-key',
+        out_key_pem,
+        '--out',
+        out_cert_pem,
     ]
 
     if args.lifetime:
@@ -328,23 +331,25 @@ def generate_dac_cert(iteration, args, out_dirs, discriminator, passcode, ca_key
                 ])
 
     execute_cmd(cmd)
-    logger.info('Generated DAC certificate: {}'.format(out_cert_pem))
-    logger.info('Generated DAC private key: {}'.format(out_key_pem))
+    logger.info(f'Generated DAC certificate: {out_cert_pem}')
+    logger.info(f'Generated DAC private key: {out_key_pem}')
 
     convert_x509_cert_from_pem_to_der(out_cert_pem, out_cert_der)
-    logger.info('Generated DAC certificate in DER format: {}'.format(out_cert_der))
+    logger.info(f'Generated DAC certificate in DER format: {out_cert_der}')
 
     generate_keypair_bin(out_key_pem, out_private_key_bin, out_public_key_bin)
-    logger.info('Generated DAC private key in binary format: {}'.format(out_private_key_bin))
-    logger.info('Generated DAC public key in binary format: {}'.format(out_public_key_bin))
+    logger.info(
+        f'Generated DAC private key in binary format: {out_private_key_bin}'
+    )
+    logger.info(f'Generated DAC public key in binary format: {out_public_key_bin}')
 
     return out_cert_der, out_private_key_bin, out_public_key_bin
 
 
 def use_dac_cert_from_args(args, out_dirs):
     logger.info('Using DAC from command line arguments...')
-    logger.info('DAC Certificate: {}'.format(args.dac_cert))
-    logger.info('DAC Private Key: {}'.format(args.dac_key))
+    logger.info(f'DAC Certificate: {args.dac_cert}')
+    logger.info(f'DAC Private Key: {args.dac_key}')
 
     # There should be only one UUID in the UUIDs list if DAC is specified
     out_cert_der = os.sep.join([out_dirs['internal'], 'DAC_cert.der'])
@@ -352,30 +357,32 @@ def use_dac_cert_from_args(args, out_dirs):
     out_public_key_bin = out_cert_der.replace('cert.der', 'public_key.bin')
 
     convert_x509_cert_from_pem_to_der(args.dac_cert, out_cert_der)
-    logger.info('Generated DAC certificate in DER format: {}'.format(out_cert_der))
+    logger.info(f'Generated DAC certificate in DER format: {out_cert_der}')
 
     generate_keypair_bin(args.dac_key, out_private_key_bin, out_public_key_bin)
-    logger.info('Generated DAC private key in binary format: {}'.format(out_private_key_bin))
-    logger.info('Generated DAC public key in binary format: {}'.format(out_public_key_bin))
+    logger.info(
+        f'Generated DAC private key in binary format: {out_private_key_bin}'
+    )
+    logger.info(f'Generated DAC public key in binary format: {out_public_key_bin}')
 
     return out_cert_der, out_private_key_bin, out_public_key_bin
 
 
 def get_manualcode_args(vid, pid, flow, discriminator, passcode):
-    payload_args = list()
-    payload_args.append('--discriminator')
-    payload_args.append(str(discriminator))
-    payload_args.append('--setup-pin-code')
-    payload_args.append(str(passcode))
-    payload_args.append('--version')
-    payload_args.append('0')
-    payload_args.append('--vendor-id')
-    payload_args.append(str(vid))
-    payload_args.append('--product-id')
-    payload_args.append(str(pid))
-    payload_args.append('--commissioning-mode')
-    payload_args.append(str(flow))
-    return payload_args
+    return [
+        '--discriminator',
+        str(discriminator),
+        '--setup-pin-code',
+        str(passcode),
+        '--version',
+        '0',
+        '--vendor-id',
+        str(vid),
+        '--product-id',
+        str(pid),
+        '--commissioning-mode',
+        str(flow),
+    ]
 
 
 def get_qrcode_args(vid, pid, flow, discriminator, passcode, disc_mode):
@@ -419,11 +426,14 @@ def generate_onboarding_data(args, out_dirs, discriminator, passcode):
     chip_qrcode = get_chip_qrcode(TOOLS['chip-tool'], args.vendor_id, args.product_id,
                                   args.commissioning_flow, discriminator, passcode, args.discovery_mode)
 
-    logger.info('Generated QR code: ' + chip_qrcode)
-    logger.info('Generated manual code: ' + chip_manualcode)
+    logger.info(f'Generated QR code: {chip_qrcode}')
+    logger.info(f'Generated manual code: {chip_manualcode}')
 
     csv_data = 'qrcode,manualcode,discriminator,passcode\n'
-    csv_data += chip_qrcode + ',' + chip_manualcode + ',' + str(discriminator) + ',' + str(passcode) + '\n'
+    csv_data += (
+        f'{chip_qrcode},{chip_manualcode},{str(discriminator)},{str(passcode)}'
+        + '\n'
+    )
 
     onboarding_data_file = os.sep.join([out_dirs['output'], 'onb_codes.csv'])
     with open(onboarding_data_file, 'w') as f:
@@ -478,7 +488,9 @@ def generate_partition(args, out_dirs):
     cbor_data = cbor.dumps(NVS_MEMORY)
     # Create hex file
     if len(cbor_data) > args.size:
-        raise ValueError("generated CBOR file exceeds declared maximum partition size! {} > {}".format(len(cbor_data), args.size))
+        raise ValueError(
+            f"generated CBOR file exceeds declared maximum partition size! {len(cbor_data)} > {args.size}"
+        )
     ih = IntelHex()
     ih.putsz(args.offset, cbor_data)
     ih.write_hex_file(os.sep.join([out_dirs['output'], 'factory_data.hex']), True)
@@ -486,9 +498,7 @@ def generate_partition(args, out_dirs):
 
 
 def generate_json_summary(args, out_dirs, pai_certs, dacs_cert, serial_num: str):
-    json_dict = dict()
-
-    json_dict['serial_num'] = serial_num
+    json_dict = {'serial_num': serial_num}
 
     for key, nvs_value in NVS_MEMORY.items():
         if (not isinstance(nvs_value, bytes) and not isinstance(nvs_value, bytearray)):
@@ -563,6 +573,7 @@ def add_additional_kv(args, serial_num):
 
 def get_and_validate_args():
     def allow_any_int(i): return int(i, 0)
+
     def base64_str(s): return base64.b64decode(s)
 
     parser = argparse.ArgumentParser(description='Manufacuring partition generator tool',
@@ -657,10 +668,12 @@ def get_and_validate_args():
 
     # Validate discriminator and passcode
     check_int_range(args.discriminator, 0x0000, 0x0FFF, 'Discriminator')
-    if args.passcode is not None:
-        if ((args.passcode < 0x0000001 and args.passcode > 0x5F5E0FE) or (args.passcode in INVALID_PASSCODES)):
-            logger.error('Invalid passcode' + str(args.passcode))
-            sys.exit(1)
+    if args.passcode is not None and (
+        (args.passcode < 0x0000001 and args.passcode > 0x5F5E0FE)
+        or (args.passcode in INVALID_PASSCODES)
+    ):
+        logger.error(f'Invalid passcode{str(args.passcode)}')
+        sys.exit(1)
 
     # Validate the device instance information
     check_int_range(args.product_id, 0x0000, 0xFFFF, 'Product id')
@@ -722,32 +735,32 @@ def main():
     # If serial number is not passed, then generate one
     if args.serial_num is None:
         serial_num_int = int(binascii.b2a_hex(os.urandom(SERIAL_NUMBER_LEN)), 16)
-        logger.info("Serial number not provided. Using generated one: {}".format(hex(serial_num_int)))
+        logger.info(
+            f"Serial number not provided. Using generated one: {hex(serial_num_int)}"
+        )
     else:
         serial_num_int = int(args.serial_num, 16)
 
     out_dir_top = os.path.realpath(args.output)
     os.makedirs(out_dir_top, exist_ok=True)
 
-    dev_sn_file = open(os.sep.join([out_dir_top, "device_sn.csv"]), "w")
-    dev_sn_file.write(DEV_SN_CSV_HDR)
+    with open(os.sep.join([out_dir_top, "device_sn.csv"]), "w") as dev_sn_file:
+        dev_sn_file.write(DEV_SN_CSV_HDR)
 
-    for i in range(args.count):
-        pai_cert = {}
-        serial_num_str = format(serial_num_int + i, 'x')
-        logger.info("Generating for {}".format(serial_num_str))
-        dev_sn_file.write(serial_num_str + '\n')
-        out_dirs = setup_out_dir(out_dir_top, args, serial_num_str)
-        add_additional_kv(args, serial_num_str)
-        generate_passcode(args, out_dirs)
-        generate_discriminator(args, out_dirs)
-        if args.paa or args.pai:
-            pai_cert = setup_root_certificates(args, out_dirs)
-        dacs_cert = write_device_unique_data(args, out_dirs, pai_cert)
-        generate_partition(args, out_dirs)
-        generate_json_summary(args, out_dirs, pai_cert, dacs_cert, serial_num_str)
-
-    dev_sn_file.close()
+        for i in range(args.count):
+            pai_cert = {}
+            serial_num_str = format(serial_num_int + i, 'x')
+            logger.info(f"Generating for {serial_num_str}")
+            dev_sn_file.write(serial_num_str + '\n')
+            out_dirs = setup_out_dir(out_dir_top, args, serial_num_str)
+            add_additional_kv(args, serial_num_str)
+            generate_passcode(args, out_dirs)
+            generate_discriminator(args, out_dirs)
+            if args.paa or args.pai:
+                pai_cert = setup_root_certificates(args, out_dirs)
+            dacs_cert = write_device_unique_data(args, out_dirs, pai_cert)
+            generate_partition(args, out_dirs)
+            generate_json_summary(args, out_dirs, pai_cert, dacs_cert, serial_num_str)
 
 
 if __name__ == "__main__":

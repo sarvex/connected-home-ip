@@ -83,9 +83,7 @@ class K32WBuilder(GnBuilder):
         self.crypto_platform = crypto_platform
 
     def GnBuildArgs(self):
-        args = [
-            'k32w0_sdk_root="%s"' % os.environ['NXP_K32W0_SDK_ROOT'],
-        ]
+        args = [f"""k32w0_sdk_root="{os.environ['NXP_K32W0_SDK_ROOT']}\""""]
 
         if self.low_power:
             args.append('chip_with_low_power=1')
@@ -127,7 +125,7 @@ class K32WBuilder(GnBuilder):
     def build_outputs(self):
         items = {}
         for extension in ["", ".map", ".hex"]:
-            name = '%s%s' % (self.app.AppNamePrefix(), extension)
+            name = f'{self.app.AppNamePrefix()}{extension}'
             items[name] = os.path.join(self.output_dir, name)
 
         return items

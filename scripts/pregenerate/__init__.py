@@ -52,15 +52,12 @@ def _FindAllIdls(sdk_root: str, external_roots: Optional[List[str]]) -> Iterator
     for subdir_name in relevant_subdirs:
         top_directory_name = os.path.join(sdk_root, subdir_name)
         logging.debug(f"Searching {top_directory_name}")
-        for idl in _IdlsInDirectory(top_directory_name, sdk_root_length+1):
-            yield idl
-
+        yield from _IdlsInDirectory(top_directory_name, sdk_root_length+1)
     # next external roots
     if external_roots:
         for root in external_roots:
             root = os.path.normpath(root)
-            for idl in _IdlsInDirectory(root, len(root) + 1):
-                yield idl
+            yield from _IdlsInDirectory(root, len(root) + 1)
 
 
 @dataclass
@@ -104,15 +101,15 @@ def FindPregenerationTargets(sdk_root: str, external_roots: Optional[List[str]],
     path_matchers = [GlobMatcher(pattern) for pattern in filter.path_glob]
 
     for idl in _FindAllIdls(sdk_root, external_roots):
-        if filter.file_type is not None:
-            if idl.file_type != filter.file_type:
-                logging.debug(f"Will not process file of type {idl.file_type}: {idl.relative_path}")
-                continue
+        if filter.file_type is not None and idl.file_type != filter.file_type:
+            logging.debug(f"Will not process file of type {idl.file_type}: {idl.relative_path}")
+            continue
 
-        if path_matchers:
-            if all([not matcher.matches(idl.relative_path) for matcher in path_matchers]):
-                logging.debug(f"Glob not matched for {idl.relative_path}")
-                continue
+        if path_matchers and all(
+            not matcher.matches(idl.relative_path) for matcher in path_matchers
+        ):
+            logging.debug(f"Glob not matched for {idl.relative_path}")
+            continue
 
         for generator in generators:
             if generator.Accept(idl):

@@ -42,11 +42,7 @@ def lowfirst_except_acronym(s: str) -> str:
        several uppercase, which is the case for acronyms (HVAC, ACL, WIFI),
        in which case it will NOT lowercase first
     """
-    if len(s) >= 2:
-        if s[1].isupper():
-            return s
-
-    return lowfirst(s)
+    return s if len(s) >= 2 and s[1].isupper() else lowfirst(s)
 
 
 def RegisterCommonFilters(filtermap):

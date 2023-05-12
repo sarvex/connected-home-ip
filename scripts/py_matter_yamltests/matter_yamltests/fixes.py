@@ -42,9 +42,7 @@ def try_apply_float_to_integer_fix(value):
         (ColorTempPhysicalMinMireds + ColorTempPhysicalMaxMireds)/2
     In this specific example it ends up as '32639.5', which is invalid.
     '''
-    if isinstance(value, float):
-        return int(value)
-    return value
+    return int(value) if isinstance(value, float) else value
 
 
 def try_apply_yaml_unrepresentable_integer_for_javascript_fixes(value):
@@ -96,7 +94,7 @@ def convert_yaml_octet_string_to_bytes(s: str) -> bytes:
     #   * Any character greater than 0xFF has the upper bytes chopped off.
     as_bytes = [ord(c) for c in s]
 
-    if any([value > 0x200 for value in as_bytes]):
+    if any(value > 0x200 for value in as_bytes):
         raise ValueError('Unsupported char in octet string %r' % as_bytes)
     accumulated_hex = ''.join([f"{(v & 0xFF):02x}" for v in as_bytes])
     return binascii.unhexlify(accumulated_hex)
@@ -131,8 +129,8 @@ def try_update_yaml_node_id_test_runner_state(tests, config):
 
         identity = test.identity
 
-        if test.cluster == 'CommissionerCommands' or test.cluster == 'DelayCommands':
-            if test.command == 'PairWithCode' or test.command == 'WaitForCommissionee':
+        if test.cluster in ['CommissionerCommands', 'DelayCommands']:
+            if test.command in ['PairWithCode', 'WaitForCommissionee']:
                 if test.responses_with_placeholders:
                     # It the test expects an error, we should not update the
                     # nodeId of the identity.

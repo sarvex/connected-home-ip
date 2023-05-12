@@ -106,9 +106,9 @@ def CreateNamespacesForAppTest():
     ]
 
     for command in COMMANDS:
-        logging.debug("Executing '%s'" % command)
+        logging.debug(f"Executing '{command}'")
         if os.system(command) != 0:
-            logging.error("Failed to execute '%s'" % command)
+            logging.error(f"Failed to execute '{command}'")
             logging.error("Are you using --privileged if running in docker?")
             sys.exit(1)
 
@@ -149,17 +149,17 @@ def RemoveNamespaceForAppTest():
     ]
 
     for command in COMMANDS:
-        logging.debug("Executing '%s'" % command)
+        logging.debug(f"Executing '{command}'")
         if os.system(command) != 0:
             breakpoint()
-            logging.error("Failed to execute '%s'" % command)
+            logging.error(f"Failed to execute '{command}'")
             sys.exit(1)
 
 
 def PrepareNamespacesForTestExecution(in_unshare: bool):
     if not in_unshare:
         EnsureNetworkNamespaceAvailability()
-    elif in_unshare:
+    else:
         EnsurePrivateState()
 
     CreateNamespacesForAppTest()

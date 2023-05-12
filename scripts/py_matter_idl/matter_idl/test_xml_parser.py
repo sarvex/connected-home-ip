@@ -39,11 +39,10 @@ def XmlToIdl(what: Union[str, List[str]]) -> Idl:
     if not isinstance(what, list):
         what = [what]
 
-    sources = []
-    for idx, txt in enumerate(what):
-        sources.append(ParseSource(source=io.StringIO(
-            txt), name=("Input %d" % (idx + 1))))
-
+    sources = [
+        ParseSource(source=io.StringIO(txt), name=("Input %d" % (idx + 1)))
+        for idx, txt in enumerate(what)
+    ]
     return ParseXmls(sources, include_meta_data=False)
 
 

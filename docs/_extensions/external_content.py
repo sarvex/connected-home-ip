@@ -81,7 +81,7 @@ def adjust_includes(
 
     def _adjust_path(path):
         # ignore absolute paths, section links, hyperlinks and same folder
-        if path.startswith(("/", "#", "http", "www")) or not "/" in path:
+        if path.startswith(("/", "#", "http", "www")) or "/" not in path:
             return path
 
         # for files that are being copied modify reference to and out of /docs
@@ -169,13 +169,13 @@ def sync_contents(app: Sphinx) -> None:
 
     srcdir = Path(app.srcdir).resolve()
     to_copy = []
-    to_delete = set(f for f in srcdir.glob("**/*") if not f.is_dir())
-    to_keep = set(
+    to_delete = {f for f in srcdir.glob("**/*") if not f.is_dir()}
+    to_keep = {
         f
         for k in app.config.external_content_keep
         for f in srcdir.glob(k)
         if not f.is_dir()
-    )
+    }
 
     for content in app.config.external_content_contents:
         prefix_src, glob = content

@@ -58,10 +58,8 @@ class PICSChecker():
     def __parse(self, pics_file: str):
         pics = {}
         with open(pics_file) as f:
-            line = f.readline()
-            while line:
-                preprocessed_line = self.__preprocess_input(line)
-                if preprocessed_line:
+            while line := f.readline():
+                if preprocessed_line := self.__preprocess_input(line):
                     items = preprocessed_line.split(_VALUE_SEPARATOR)
                     # There should always be one key and one value, nothing else.
                     if len(items) != 2:
@@ -69,13 +67,12 @@ class PICSChecker():
                             f'Invalid expression: {line}')
 
                     key, value = items
-                    if value != _VALUE_DISABLED and value != _VALUE_ENABLED:
+                    if value not in [_VALUE_DISABLED, _VALUE_ENABLED]:
                         raise InvalidPICSConfigurationValueError(
                             f'Invalid expression: {line}')
 
                     pics[key] = value == _VALUE_ENABLED
 
-                line = f.readline()
         return pics
 
     def __evaluate_expression(self, tokens: list[str], pics: dict):
@@ -121,37 +118,37 @@ class PICSChecker():
         token = self.__normalize(token)
         self.__expression_index += 1
 
-        if pics.get(token) == None:
-            # By default, let's consider that if a PICS item is not defined, it is |false|.
-            # It allows to create a file that only contains enabled features.
-            return False
-
-        return pics.get(token)
+        return False if pics.get(token) is None else pics.get(token)
 
     def __tokenize(self, expression: str):
         token = ''
         tokens = []
 
         for c in expression:
-            if c == ' ' or c == '\t' or c == '\n':
-                pass
-            elif c == '(' or c == ')' or c == '!':
+            if c in [' ', '\t', '\n']:
+                continue
+            if (
+                c not in ['(', ')', '!']
+                and c in ['&', '|']
+                and token
+                and token[-1] == c
+            ):
+                token = token[:-1]
+                if token:
+                    tokens.append(token)
+                    token = ''
+                tokens.append(c + c)
+            elif (
+                c not in ['(', ')', '!']
+                and c in ['&', '|']
+                or c not in ['(', ')', '!']
+            ):
+                token += c
+            else:
                 if token:
                     tokens.append(token)
                     token = ''
                 tokens.append(c)
-            elif c == '&' or c == '|':
-                if token and token[-1] == c:
-                    token = token[:-1]
-                    if token:
-                        tokens.append(token)
-                        token = ''
-                    tokens.append(c + c)
-                else:
-                    token += c
-            else:
-                token += c
-
         if token:
             tokens.append(token)
             token = ''
@@ -178,9 +175,4 @@ class PICSChecker():
         return value.lower()
 
     def __normalize(self, token: str):
-        # Convert to all-lowercase so people who mess up cases don't have things
-        # break on them in subtle ways.
-        token = self.__make_lowercase(token)
-
-        # TODO strip off "(Additional Context)" bits from the end of the code.
-        return token
+        return self.__make_lowercase(token)

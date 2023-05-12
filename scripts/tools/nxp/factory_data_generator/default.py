@@ -71,7 +71,7 @@ class InputArgument:
 
     def output(self):
         out = (self.key(), self.length(), self.encode())
-        logging.info("'{}' length: {}".format(type(self).__name__, self.length()))
+        logging.info(f"'{type(self).__name__}' length: {self.length()}")
         return out
 
 

@@ -24,7 +24,9 @@ from matter_idl.matter_idl_types import Attribute, Cluster, ClusterSide, Field, 
 
 
 def camel_to_const(s):
-    return re.sub("([a-z])([A-Z])", lambda y: y.group(1) + "_" + y.group(2), s).upper()
+    return re.sub(
+        "([a-z])([A-Z])", lambda y: f"{y.group(1)}_{y.group(2)}", s
+    ).upper()
 
 
 def create_lookup_context(idl: Idl, cluster: Cluster) -> TypeLookupContext:
@@ -46,15 +48,19 @@ def get_field_info(definition: Field, cluster: Cluster, idl: Idl) -> Tuple[str, 
         actual = actual.base_type
 
     if isinstance(actual, BasicString):
-        return 'OctetString', 'char', actual.max_length, \
-            'ZCL_%s_ATTRIBUTE_TYPE' % actual.idl_name.upper()
+        return (
+            'OctetString',
+            'char',
+            actual.max_length,
+            f'ZCL_{actual.idl_name.upper()}_ATTRIBUTE_TYPE',
+        )
 
     if isinstance(actual, BasicInteger):
         name = actual.idl_name.upper()
         ty = "int%d_t" % actual.power_of_two_bits
         if not actual.is_signed:
-            ty = "u" + ty
-        return "", ty, actual.byte_count, "ZCL_%s_ATTRIBUTE_TYPE" % name
+            ty = f"u{ty}"
+        return "", ty, actual.byte_count, f"ZCL_{name}_ATTRIBUTE_TYPE"
     if isinstance(actual, FundamentalType):
         if actual == FundamentalType.BOOL:
             return "", "bool", 1, "ZCL_BOOLEAN_ATTRIBUTE_TYPE"
@@ -65,17 +71,21 @@ def get_field_info(definition: Field, cluster: Cluster, idl: Idl) -> Tuple[str, 
         else:
             raise Exception('Unknown fundamental type: %r' % actual)
     if isinstance(actual, IdlType):
-        return '', actual.idl_name, 'sizeof(%s)' % actual.idl_name, \
-            'ZCL_STRUCT_ATTRIBUTE_TYPE'
-    raise Exception('UNKNOWN TYPE: %s' % actual)
+        return (
+            '',
+            actual.idl_name,
+            f'sizeof({actual.idl_name})',
+            'ZCL_STRUCT_ATTRIBUTE_TYPE',
+        )
+    raise Exception(f'UNKNOWN TYPE: {actual}')
 
 
 def get_raw_size_and_type(attr: Attribute, cluster: Cluster, idl: Idl) -> str:
     container, cType, size, matterType = get_field_info(
         attr.definition, cluster, idl)
     if attr.definition.is_list:
-        return 'ZCL_ARRAY_ATTRIBUTE_TYPE, {}'.format(size)
-    return '{}, {}'.format(matterType, size)
+        return f'ZCL_ARRAY_ATTRIBUTE_TYPE, {size}'
+    return f'{matterType}, {size}'
 
 
 def get_field_type(definition: Field, cluster: Cluster, idl: Idl):
@@ -84,11 +94,11 @@ def get_field_type(definition: Field, cluster: Cluster, idl: Idl):
     if container == 'OctetString':
         return 'std::string'
     if definition.is_list:
-        cType = 'std::vector<{}>'.format(cType)
+        cType = f'std::vector<{cType}>'
     if definition.is_nullable:
-        cType = '::chip::app::DataModel::Nullable<{}>'.format(cType)
+        cType = f'::chip::app::DataModel::Nullable<{cType}>'
     if definition.is_optional:
-        cType = '::chip::Optional<{}>'.format(cType)
+        cType = f'::chip::Optional<{cType}>'
     return cType
 
 
@@ -98,7 +108,7 @@ def get_attr_type(attr: Attribute, cluster: Cluster, idl: Idl):
 
 def get_attr_init(attr: Attribute, cluster: Cluster, idl: Idl):
     if attr.definition.name == 'clusterRevision':
-        return ', ZCL_' + camel_to_const(cluster.name) + '_CLUSTER_REVISION'
+        return f', ZCL_{camel_to_const(cluster.name)}_CLUSTER_REVISION'
     return ''
 
 
@@ -106,9 +116,7 @@ def get_attr_mask(attr: Attribute, cluster: Cluster, idl: Idl):
     masks = []
     if attr.is_writable:
         masks.append('ATTRIBUTE_MASK_WRITABLE')
-    if masks:
-        return ' | '.join(masks)
-    return '0'
+    return ' | '.join(masks) if masks else '0'
 
 
 def get_dynamic_endpoint(idl: Idl):
@@ -118,13 +126,10 @@ def get_dynamic_endpoint(idl: Idl):
 
 
 def is_dynamic_cluster(cluster: Cluster, idl: Idl):
-    ep = get_dynamic_endpoint(idl)
-    if not ep:
+    if ep := get_dynamic_endpoint(idl):
+        return any(cluster.name == c.name for c in ep.server_clusters)
+    else:
         return True
-    for c in ep.server_clusters:
-        if cluster.name == c.name:
-            return True
-    return False
 
 
 class BridgeGenerator(CodeGenerator):
@@ -158,9 +163,9 @@ class BridgeGenerator(CodeGenerator):
                 continue
 
             if cluster.side != ClusterSide.SERVER:
-                output_file_name = "bridge/%sServer.h" % cluster.name
+                output_file_name = f"bridge/{cluster.name}Server.h"
             else:
-                output_file_name = "bridge/%s.h" % cluster.name
+                output_file_name = f"bridge/{cluster.name}.h"
 
             self.internal_render_one_output(
                 template_path="BridgeClustersCpp.jinja",

@@ -80,16 +80,15 @@ class IMXBuilder(GnBuilder):
         try:
             entries = os.listdir(self.SysRootPath('IMX_SDK_ROOT'))
         except FileNotFoundError:
-            if self.SysRootPath('IMX_SDK_ROOT') == 'IMX_SDK_ROOT':
-                # CI test, use default value
-                target_cpu = 'arm64'
-                arm_arch = 'armv8-a'
-                sdk_target_sysroot = os.path.join(self.SysRootPath('IMX_SDK_ROOT'), 'sysroots/cortexa53-crypto-poky-linux')
-                cross_compile = 'aarch64-poky-linux'
-                cc = 'aarch64-poky-linux-gcc'
-                cxx = 'aarch64-poky-linux-g++'
-            else:
+            if self.SysRootPath('IMX_SDK_ROOT') != 'IMX_SDK_ROOT':
                 raise Exception('the value of env IMX_SDK_ROOT is not a valid path.')
+            # CI test, use default value
+            target_cpu = 'arm64'
+            arm_arch = 'armv8-a'
+            sdk_target_sysroot = os.path.join(self.SysRootPath('IMX_SDK_ROOT'), 'sysroots/cortexa53-crypto-poky-linux')
+            cross_compile = 'aarch64-poky-linux'
+            cc = 'aarch64-poky-linux-gcc'
+            cxx = 'aarch64-poky-linux-g++'
         else:
             for entry in entries:
                 if entry.startswith(r'environment-setup-'):
@@ -106,20 +105,18 @@ class IMXBuilder(GnBuilder):
                     lines = env_setup_script_fd.readlines()
                     for line in lines:
                         line = line.strip('\n')
-                        m = re.match(r'^\s*export\s+SDKTARGETSYSROOT=(.*)', line)
-                        if m:
-                            sdk_target_sysroot = shlex.split(m.group(1))[0]
+                        if m := re.match(
+                            r'^\s*export\s+SDKTARGETSYSROOT=(.*)', line
+                        ):
+                            sdk_target_sysroot = shlex.split(m[1])[0]
 
-                        m = re.match(r'^\s*export\s+CC=(.*)', line)
-                        if m:
-                            cc = shlex.split(m.group(1))[0]
-                        m = re.match(r'^\s*export\s+CXX=(.*)', line)
-                        if m:
-                            cxx = shlex.split(m.group(1))[0]
+                        if m := re.match(r'^\s*export\s+CC=(.*)', line):
+                            cc = shlex.split(m[1])[0]
+                        if m := re.match(r'^\s*export\s+CXX=(.*)', line):
+                            cxx = shlex.split(m[1])[0]
 
-                        m = re.match(r'^\s*export\s+ARCH=(.*)', line)
-                        if m:
-                            target_cpu = shlex.split(m.group(1))[0]
+                        if m := re.match(r'^\s*export\s+ARCH=(.*)', line):
+                            target_cpu = shlex.split(m[1])[0]
                             if target_cpu == 'arm64':
                                 arm_arch = 'armv8-a'
                             elif target_cpu == 'arm':
@@ -127,9 +124,8 @@ class IMXBuilder(GnBuilder):
                             else:
                                 raise Exception('ARCH should be arm64 or arm in the SDK environment setup script.')
 
-                        m = re.match(r'^\s*export\s+CROSS_COMPILE=(.*)', line)
-                        if m:
-                            cross_compile = shlex.split(m.group(1))[0][:-1]
+                        if m := re.match(r'^\s*export\s+CROSS_COMPILE=(.*)', line):
+                            cross_compile = shlex.split(m[1])[0][:-1]
 
                 try:
                     sdk_target_sysroot
@@ -153,18 +149,15 @@ class IMXBuilder(GnBuilder):
         args = [
             'treat_warnings_as_errors=false',
             'target_os="linux"',
-            'target_cpu="%s"' % target_cpu,
-            'arm_arch="%s"' % arm_arch,
+            f'target_cpu="{target_cpu}"',
+            f'arm_arch="{arm_arch}"',
             'import(\"//build_overrides/build.gni\")',
             'custom_toolchain=\"${build_root}/toolchain/custom\"',
-            'sysroot="%s"' % sdk_target_sysroot,
+            f'sysroot="{sdk_target_sysroot}"',
             'target_cflags=[ "-DCHIP_DEVICE_CONFIG_WIFI_STATION_IF_NAME=\\"mlan0\\"", "-DCHIP_DEVICE_CONFIG_LINUX_DHCPC_CMD=\\"udhcpc -b -i %s \\"" ]',
-            'target_cc="%s/sysroots/x86_64-pokysdk-linux/usr/bin/%s/%s"' % (self.SysRootPath('IMX_SDK_ROOT'), cross_compile,
-                                                                            cc),
-            'target_cxx="%s/sysroots/x86_64-pokysdk-linux/usr/bin/%s/%s"' % (self.SysRootPath('IMX_SDK_ROOT'), cross_compile,
-                                                                             cxx),
-            'target_ar="%s/sysroots/x86_64-pokysdk-linux/usr/bin/%s/%s-ar"' % (self.SysRootPath('IMX_SDK_ROOT'), cross_compile,
-                                                                               cross_compile),
+            f"""target_cc="{self.SysRootPath('IMX_SDK_ROOT')}/sysroots/x86_64-pokysdk-linux/usr/bin/{cross_compile}/{cc}\"""",
+            f"""target_cxx="{self.SysRootPath('IMX_SDK_ROOT')}/sysroots/x86_64-pokysdk-linux/usr/bin/{cross_compile}/{cxx}\"""",
+            f"""target_ar="{self.SysRootPath('IMX_SDK_ROOT')}/sysroots/x86_64-pokysdk-linux/usr/bin/{cross_compile}/{cross_compile}-ar\"""",
         ]
 
         if self.release:
@@ -176,7 +169,7 @@ class IMXBuilder(GnBuilder):
 
     def SysRootPath(self, name):
         if name not in os.environ:
-            raise Exception('Missing environment variable "%s"' % name)
+            raise Exception(f'Missing environment variable "{name}"')
         return os.environ[name]
 
     def build_outputs(self):
@@ -187,12 +180,8 @@ class IMXBuilder(GnBuilder):
             if os.path.isdir(path):
                 for root, dirs, files in os.walk(path):
                     for file in files:
-                        outputs.update({
-                            file: os.path.join(root, file)
-                        })
+                        outputs[file] = os.path.join(root, file)
             else:
-                outputs.update({
-                    name: os.path.join(self.output_dir, name)
-                })
+                outputs[name] = os.path.join(self.output_dir, name)
 
         return outputs

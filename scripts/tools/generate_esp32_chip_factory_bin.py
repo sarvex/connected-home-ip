@@ -220,7 +220,7 @@ def get_fixed_label_dict(fixed_labels):
             sys.exit(1)
 
         if _l[0] not in fl_dict.keys():
-            fl_dict[_l[0]] = list()
+            fl_dict[_l[0]] = []
 
         fl_dict[_l[0]].append({_l[1]: _l[2]})
 
@@ -267,10 +267,12 @@ def check_int_range(value, min_value, max_value, name):
 
 def validate_args(args):
     # Validate the passcode
-    if args.passcode is not None:
-        if ((args.passcode < 0x0000001 and args.passcode > 0x5F5E0FE) or (args.passcode in INVALID_PASSCODES)):
-            logging.error('Invalid passcode:' + str(args.passcode))
-            sys.exit(1)
+    if args.passcode is not None and (
+        (args.passcode < 0x0000001 and args.passcode > 0x5F5E0FE)
+        or (args.passcode in INVALID_PASSCODES)
+    ):
+        logging.error(f'Invalid passcode:{str(args.passcode)}')
+        sys.exit(1)
 
     check_int_range(args.discriminator, 0x0000, 0x0FFF, 'Discriminator')
     check_int_range(args.product_id, 0x0000, 0xFFFF, 'Product id')
@@ -284,7 +286,7 @@ def validate_args(args):
     check_str_range(args.mfg_date, 8, 16, 'Manufacturing date')
     check_str_range(args.rd_id_uid, 32, 32, 'Rotating device Unique id')
 
-    logging.info('Discriminator:{} Passcode:{}'.format(args.discriminator, args.passcode))
+    logging.info(f'Discriminator:{args.discriminator} Passcode:{args.passcode}')
 
 
 def gen_spake2p_params(passcode):
@@ -465,9 +467,7 @@ def gen_raw_ec_keypair_from_der(key_file, pubkey_raw_file, privkey_raw_file):
 
 
 def generate_nvs_csv(out_csv_filename):
-    csv_content = 'key,type,encoding,value\n'
-    csv_content += 'chip-factory,namespace,,\n'
-
+    csv_content = 'key,type,encoding,value\n' + 'chip-factory,namespace,,\n'
     for k, v in FACTORY_DATA.items():
         if v['value'] is None:
             continue
@@ -476,7 +476,9 @@ def generate_nvs_csv(out_csv_filename):
     with open(out_csv_filename, 'w') as f:
         f.write(csv_content)
 
-    logging.info('Generated the factory partition csv file : {}'.format(os.path.abspath(out_csv_filename)))
+    logging.info(
+        f'Generated the factory partition csv file : {os.path.abspath(out_csv_filename)}'
+    )
 
 
 def generate_nvs_bin(encrypt, size, csv_filename, bin_filename):
@@ -495,12 +497,15 @@ def generate_nvs_bin(encrypt, size, csv_filename, bin_filename):
 
 
 def print_flashing_help(encrypt, bin_filename):
-    logging.info('Run below command to flash {}'.format(bin_filename))
-    logging.info('esptool.py -p (PORT) write_flash (FACTORY_PARTITION_ADDR) {}'.format(os.path.join(os.getcwd(), bin_filename)))
-    if (encrypt):
-        logging.info('Run below command to flash {}'.format(NVS_KEY_PARTITION_BIN))
-        logging.info('esptool.py -p (PORT) write_flash --encrypt (NVS_KEY_PARTITION_ADDR) {}'.format(
-            os.path.join(os.getcwd(), 'keys', NVS_KEY_PARTITION_BIN)))
+    logging.info(f'Run below command to flash {bin_filename}')
+    logging.info(
+        f'esptool.py -p (PORT) write_flash (FACTORY_PARTITION_ADDR) {os.path.join(os.getcwd(), bin_filename)}'
+    )
+    if encrypt:
+        logging.info(f'Run below command to flash {NVS_KEY_PARTITION_BIN}')
+        logging.info(
+            f"esptool.py -p (PORT) write_flash --encrypt (NVS_KEY_PARTITION_ADDR) {os.path.join(os.getcwd(), 'keys', NVS_KEY_PARTITION_BIN)}"
+        )
 
 
 def clean_up():

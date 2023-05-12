@@ -46,10 +46,7 @@ class PlaceholderEncoder:
     def encode(self, request):
         cluster = request.cluster
         command = request.command
-        if cluster is None or command is None:
-            return ''
-
-        return request.command
+        return '' if cluster is None or command is None else request.command
 
 
 class PlaceholderDecoder:

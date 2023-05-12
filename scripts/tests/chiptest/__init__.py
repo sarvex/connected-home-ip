@@ -59,10 +59,7 @@ def _IsValidYamlTest(name: str) -> bool:
     # Simulated tests are not runnable by repl tests, need
     # separate infrastructure. Exclude them completely (they are
     # not even manual)
-    if name.endswith('_Simulated.yaml'):
-        return False
-
-    return name not in INVALID_TESTS
+    return False if name.endswith('_Simulated.yaml') else name not in INVALID_TESTS
 
 
 def _LoadManualTestsJson(json_file_path: str) -> Iterator[str]:
@@ -74,13 +71,11 @@ def _LoadManualTestsJson(json_file_path: str) -> Iterator[str]:
 
 
 def _GetManualTests() -> Set[str]:
-    manualtests = set()
-
-    # Flagged as manual from: src/app/tests/suites/manualTests.json
-    for item in _LoadManualTestsJson(os.path.join(_YAML_TEST_SUITE_PATH, "manualTests.json")):
-        manualtests.add(item)
-
-    return manualtests
+    return set(
+        _LoadManualTestsJson(
+            os.path.join(_YAML_TEST_SUITE_PATH, "manualTests.json")
+        )
+    )
 
 
 def _GetFlakyTests() -> Set[str]:
@@ -230,16 +225,12 @@ def _hardcoded_python_yaml_tests():
 
 
 def AllYamlTests():
-    for test in _hardcoded_python_yaml_tests():
-        yield test
+    yield from _hardcoded_python_yaml_tests()
 
 
 def AllChipToolTests(chip_tool: str):
-    for test in tests_with_command(chip_tool, is_manual=False):
-        yield test
-
-    for test in tests_with_command(chip_tool, is_manual=True):
-        yield test
+    yield from tests_with_command(chip_tool, is_manual=False)
+    yield from tests_with_command(chip_tool, is_manual=True)
 
 
 __all__ = [

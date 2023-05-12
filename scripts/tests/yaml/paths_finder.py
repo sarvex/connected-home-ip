@@ -59,7 +59,7 @@ def finder():
 def view():
     """View the cache entries."""
     for name in _PATHS_CACHE:
-        print(click.style(f'{name}', bold=True) + f':\t{_PATHS_CACHE[name]}')
+        print(f"{click.style(f'{name}', bold=True)}:\t{_PATHS_CACHE[name]}")
 
 
 @finder.command()
@@ -90,8 +90,7 @@ def reset():
 def search(name: str):
     """Search for a target and add it to the cache."""
     paths_finder = PathsFinder()
-    path = paths_finder.get(name)
-    if path:
+    if path := paths_finder.get(name):
         print(f'The target "{name}" has been added with the value "{path}".')
     else:
         print(f'The target "{name}" was not found.')

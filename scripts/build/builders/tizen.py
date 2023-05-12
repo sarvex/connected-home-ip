@@ -130,21 +130,20 @@ class TizenBuilder(GnBuilder):
         # Make sure that required ENV variables are defined
         for env in ('TIZEN_SDK_ROOT', 'TIZEN_SDK_SYSROOT'):
             if env not in os.environ:
-                raise Exception(
-                    "Environment %s missing, cannot build Tizen target" % env)
+                raise Exception(f"Environment {env} missing, cannot build Tizen target")
 
         return self.extra_gn_options + [
             'target_os="tizen"',
-            'target_cpu="%s"' % self.board.value.target_cpu,
-            'tizen_sdk_root="%s"' % os.environ['TIZEN_SDK_ROOT'],
-            'tizen_sdk_sysroot="%s"' % os.environ['TIZEN_SDK_SYSROOT'],
+            f'target_cpu="{self.board.value.target_cpu}"',
+            f"""tizen_sdk_root="{os.environ['TIZEN_SDK_ROOT']}\"""",
+            f"""tizen_sdk_sysroot="{os.environ['TIZEN_SDK_SYSROOT']}\"""",
         ]
 
     def _generate_flashbundle(self):
         if self.app.is_tpk:
             logging.info('Packaging %s', self.output_dir)
-            cmd = ['ninja', '-C', self.output_dir, self.app.value.name + ':tpk']
-            self._Execute(cmd, title='Packaging ' + self.identifier)
+            cmd = ['ninja', '-C', self.output_dir, f'{self.app.value.name}:tpk']
+            self._Execute(cmd, title=f'Packaging {self.identifier}')
 
     def build_outputs(self):
         return {

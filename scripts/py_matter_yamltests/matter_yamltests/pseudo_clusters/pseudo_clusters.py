@@ -25,25 +25,29 @@ class PseudoClusters:
         self.clusters = clusters
 
     def supports(self, request) -> bool:
-        return False if self.__get_command(request) is None else True
+        return self.__get_command(request) is not None
 
     async def execute(self, request):
         status = {'error': 'FAILURE'}
 
-        command = self.__get_command(request)
-        if command:
+        if command := self.__get_command(request):
             status = await command(request)
             # If the command does not returns an error, it is considered a success.
-            if status == None:
+            if status is None:
                 status = {}
 
         return status, []
 
     def __get_command(self, request):
-        for cluster in self.clusters:
-            if request.cluster == cluster.name and getattr(cluster, request.command, None):
-                return getattr(cluster, request.command)
-        return None
+        return next(
+            (
+                getattr(cluster, request.command)
+                for cluster in self.clusters
+                if request.cluster == cluster.name
+                and getattr(cluster, request.command, None)
+            ),
+            None,
+        )
 
 
 def get_default_pseudo_clusters() -> PseudoClusters:

@@ -217,8 +217,12 @@ class SizeDatabase(memdf.util.sqlite.Database):
                 new = [row[k] for k in keep]
                 parent_size = row['parent_size']
                 commit_size = row['commit_size']
-                new.append(commit_size - parent_size)
-                new.append(self.percent_change(parent_size, commit_size))
+                new.extend(
+                    (
+                        commit_size - parent_size,
+                        self.percent_change(parent_size, commit_size),
+                    )
+                )
                 rows.append(new)
                 artifacts.add(row['artifact'])
                 builds.add(row['commit_build'])

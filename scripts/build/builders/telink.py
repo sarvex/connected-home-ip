@@ -122,14 +122,13 @@ class TelinkBuilder(Builder):
         self.enable_factory_data = enable_factory_data
 
     def get_cmd_prefixes(self):
-        if not self._runner.dry_run:
-            # Zephyr base
-            if 'TELINK_ZEPHYR_BASE' not in os.environ:
-                raise Exception("Telink builds require TELINK_ZEPHYR_BASE")
+        if not self._runner.dry_run and 'TELINK_ZEPHYR_BASE' not in os.environ:
+            raise Exception("Telink builds require TELINK_ZEPHYR_BASE")
 
-        cmd = 'export ZEPHYR_TOOLCHAIN_VARIANT=zephyr\n'
-        cmd += 'export ZEPHYR_BASE="$TELINK_ZEPHYR_BASE"\n'
-
+        cmd = (
+            'export ZEPHYR_TOOLCHAIN_VARIANT=zephyr\n'
+            + 'export ZEPHYR_BASE="$TELINK_ZEPHYR_BASE"\n'
+        )
         if 'TELINK_ZEPHYR_SDK_DIR' in os.environ:
             cmd += 'export ZEPHYR_SDK_INSTALL_DIR="$TELINK_ZEPHYR_SDK_DIR"\n'
 
@@ -149,7 +148,7 @@ class TelinkBuilder(Builder):
         if self.options.pregen_dir:
             flags.append(f"-DCHIP_CODEGEN_PREGEN_DIR={shlex.quote(self.options.pregen_dir)}")
 
-        build_flags = " -- " + " ".join(flags) if len(flags) > 0 else ""
+        build_flags = " -- " + " ".join(flags) if flags else ""
 
         cmd = self.get_cmd_prefixes()
         cmd += '''
@@ -161,26 +160,21 @@ west build --cmake-only -d {outdir} -b {board} {sourcedir}{build_flags}
             sourcedir=shlex.quote(os.path.join(self.root, 'examples', self.app.ExampleName(), 'telink')),
             build_flags=build_flags).strip()
 
-        self._Execute(['bash', '-c', cmd],
-                      title='Generating ' + self.identifier)
+        self._Execute(['bash', '-c', cmd], title=f'Generating {self.identifier}')
 
     def _build(self):
         logging.info('Compiling Telink at %s', self.output_dir)
 
-        cmd = self.get_cmd_prefixes() + ("ninja -C %s" % self.output_dir)
+        cmd = f"{self.get_cmd_prefixes()}ninja -C {self.output_dir}"
 
-        self._Execute(['bash', '-c', cmd], title='Building ' + self.identifier)
+        self._Execute(['bash', '-c', cmd], title=f'Building {self.identifier}')
 
     def build_outputs(self):
         return {
-            '%s.elf' %
-            self.app.AppNamePrefix(): os.path.join(
-                self.output_dir,
-                'zephyr',
-                'zephyr.elf'),
-            '%s.map' %
-            self.app.AppNamePrefix(): os.path.join(
-                self.output_dir,
-                'zephyr',
-                'zephyr.map'),
+            f'{self.app.AppNamePrefix()}.elf': os.path.join(
+                self.output_dir, 'zephyr', 'zephyr.elf'
+            ),
+            f'{self.app.AppNamePrefix()}.map': os.path.join(
+                self.output_dir, 'zephyr', 'zephyr.map'
+            ),
         }

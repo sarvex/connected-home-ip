@@ -30,7 +30,7 @@ def main():
     args = parser.parse_args()
 
     with open(args.keep, "rt") as f:
-        for source in f.readlines():
+        for source in f:
             source = source.strip()
             if not source:
                 continue

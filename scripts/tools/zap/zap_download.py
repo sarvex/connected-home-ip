@@ -51,17 +51,14 @@ class DownloadType(enum.Enum):
 
 
 def _GetDefaultExtractRoot():
-    if 'PW_ENVIRONMENT_ROOT' in os.environ:
-        return os.environ['PW_ENVIRONMENT_ROOT']
-    else:
-        return ".zap"
+    return os.environ.get('PW_ENVIRONMENT_ROOT', ".zap")
 
 
 def _LogPipeLines(pipe, prefix):
     l = logging.getLogger().getChild(prefix)
     for line in iter(pipe.readline, b''):
         line = line.strip().decode('utf-8', errors="ignore")
-        l.info('%s' % line)
+        l.info(f'{line}')
 
 
 def _ExecuteProcess(cmd, cwd):
@@ -93,7 +90,7 @@ def _SetupSourceZap(install_directory: str, zap_version: str):
         install_directory
     )
 
-    _ExecuteProcess(f"npm ci".split(), install_directory)
+    _ExecuteProcess("npm ci".split(), install_directory)
 
 
 def _SetupReleaseZap(install_directory: str, zap_version: str):
@@ -201,14 +198,14 @@ def main(log_level: str, sdk_root: str, extract_root: str, zap_version: Optional
 
     if not zap_version:
         zap_version = _GetZapVersionToUse(sdk_root)
-        logging.info('Found required zap version to be: %s' % zap_version)
+        logging.info(f'Found required zap version to be: {zap_version}')
 
     logging.debug('User requested to download a %s zap version %s into %s', zap, zap_version, extract_root)
 
     install_directory = os.path.join(extract_root, f"zap-{zap_version}")
 
     if zap == DownloadType.SOURCE:
-        install_directory = install_directory + "-src"
+        install_directory = f"{install_directory}-src"
         _SetupSourceZap(install_directory, zap_version)
 
         # Make sure the results can be used in scripts

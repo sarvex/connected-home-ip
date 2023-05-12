@@ -38,7 +38,7 @@ class DarwinToolRunner:
             self.process.kill()
 
     def waitForMessage(self, message):
-        logging.debug('Waiting for %s' % message)
+        logging.debug(f'Waiting for {message}')
 
         start_time = time.monotonic()
         ready, self.lastLogIndex = self.outpipe.CapturedLogContains(
@@ -50,12 +50,12 @@ class DarwinToolRunner:
                 logging.error(died_str)
                 raise Exception(died_str)
             if time.monotonic() - start_time > 10:
-                raise Exception('Timeout while waiting for %s' % message)
+                raise Exception(f'Timeout while waiting for {message}')
             time.sleep(0.1)
             ready, self.lastLogIndex = self.outpipe.CapturedLogContains(
                 message, self.lastLogIndex)
 
-        logging.debug('Success waiting for: %s' % message)
+        logging.debug(f'Success waiting for: {message}')
 
 
 class InteractiveDarwinTool(DarwinToolRunner):
@@ -67,7 +67,7 @@ class InteractiveDarwinTool(DarwinToolRunner):
         self.waitForMessage(self.prompt)
 
     def sendCommand(self, command):
-        logging.debug('Sending command %s' % command)
+        logging.debug(f'Sending command {command}')
         print(command, file=self.stdin)
         self.waitForPrompt()
 
@@ -160,13 +160,16 @@ def cmd_run(context, darwin_framework_tool, ota_requestor_app, ota_data_file, ot
 
         darwin_tool.waitForPrompt()
 
-        darwin_tool.sendCommand("otasoftwareupdateapp candidate-file-path %s" % ota_candidate_file)
+        darwin_tool.sendCommand(
+            f"otasoftwareupdateapp candidate-file-path {ota_candidate_file}"
+        )
         darwin_tool.sendCommand("otasoftwareupdateapp set-reply-params --status 0")
-        darwin_tool.sendCommand("otasoftwareupdaterequestor announce-otaprovider %s 0 0 0 %s 0" %
-                                (commissionerNodeId, TEST_NODE_ID))
+        darwin_tool.sendCommand(
+            f"otasoftwareupdaterequestor announce-otaprovider {commissionerNodeId} 0 0 0 {TEST_NODE_ID} 0"
+        )
 
         # Now wait for the OTA download to finish.
-        requestor_app.waitForMessage("OTA image downloaded to %s" % ota_destination_file)
+        requestor_app.waitForMessage(f"OTA image downloaded to {ota_destination_file}")
 
         # Make sure the right thing was downloaded.
         apps_register.compareFiles(ota_data_file, ota_destination_file)

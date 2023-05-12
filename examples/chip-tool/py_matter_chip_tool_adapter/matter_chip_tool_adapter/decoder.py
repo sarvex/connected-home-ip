@@ -88,13 +88,16 @@ class Decoder:
                 elif key == _EVENT_ID:
                     key = _EVENT
                     value = specs.get_event_name(payload[_CLUSTER_ID], value)
-                elif key == _VALUE or key == _ERROR or key == _CLUSTER_ERROR:
-                    pass
-                else:
+                elif key not in [_VALUE, _ERROR, _CLUSTER_ERROR]:
                     # Raise an error since the other fields probably needs to be translated too.
                     raise KeyError(f'Error: field "{key}" not supported')
 
-                if value is None and (key == _CLUSTER or key == _RESPONSE or key == _ATTRIBUTE or key == _EVENT):
+                if value is None and key in [
+                    _CLUSTER,
+                    _RESPONSE,
+                    _ATTRIBUTE,
+                    _EVENT,
+                ]:
                     # If the definition for this cluster/command/attribute/event is missing, there is not
                     # much we can do to convert the response to the proper format. It usually indicates that
                     # the cluster definition is missing something. So we just raise an exception to tell the
@@ -103,10 +106,9 @@ class Decoder:
                     if key == _CLUSTER:
                         raise KeyError(
                             f'Error: The cluster ({cluster_code}) definition can not be found. Please update the cluster definition.')
-                    else:
-                        value_code = hex(payload[key + 'Id'])
-                        raise KeyError(
-                            f'Error: The cluster ({cluster_code}) {key} ({value_code}) definition can not be found. Please update the cluster definition.')
+                    value_code = hex(payload[f'{key}Id'])
+                    raise KeyError(
+                        f'Error: The cluster ({cluster_code}) {key} ({value_code}) definition can not be found. Please update the cluster definition.')
 
                 translated_payload[key] = value
             translated_payloads.append(translated_payload)
@@ -130,8 +132,8 @@ class MatterLog:
         # TODO We do assume utf-8 encoding is used, it may not be true though.
         self.message = decoded_message_bytes.decode('utf-8')
 
-    def decode_logs(logs):
-        return list(map(MatterLog, logs))
+    def decode_logs(self):
+        return list(map(MatterLog, self))
 
 
 class Converter():
@@ -228,9 +230,9 @@ class BaseConverter:
                 cluster_name, typename) or specs.get_event_by_name(cluster_name, typename)
             for field in struct.fields:
                 field_name = field.name
-                field_type = field.data_type.name
-                field_array = field.is_list
                 if field_name in value:
+                    field_type = field.data_type.name
+                    field_array = field.is_list
                     value[field_name] = self.run(
                         specs, value[field_name], cluster_name, field_type, field_array)
         elif isinstance(value, list) and array:
@@ -260,7 +262,7 @@ class FloatConverter(BaseConverter):
 
 class OctetStringConverter(BaseConverter):
     def maybe_convert(self, typename, value):
-        if typename == 'octet_string' or typename == 'long_octet_string':
+        if typename in ['octet_string', 'long_octet_string']:
             if value == '':
                 value = bytes()
             elif value.startswith('base64:'):
@@ -280,14 +282,14 @@ class StructFieldsNameConverter():
                 cluster_name, typename) or specs.get_event_by_name(cluster_name, typename)
             for field in struct.fields:
                 field_code = field.code
-                field_name = field.name
-                field_type = field.data_type.name
-                field_array = field.is_list
                 # chip-tool returns the field code as an integer but the test suite expects
                 # a field name.
                 # To not confuse the test suite, the field code is replaced by its field name
                 # equivalent and then removed.
                 if str(field_code) in value:
+                    field_name = field.name
+                    field_type = field.data_type.name
+                    field_array = field.is_list
                     value[field_name] = self.run(
                         specs,
                         value[str(field_code)],

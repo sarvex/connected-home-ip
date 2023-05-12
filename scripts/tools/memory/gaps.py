@@ -49,15 +49,11 @@ def hexdump(data, start, length, address=0):
                 address += 1
                 h += f' {b:02X}'
                 c = chr(b)
-                if c.isascii() and c.isprintable():
-                    s += c
-                else:
-                    s += '.'
+                s += c if c.isascii() and c.isprintable() else '.'
         yield f'{iaddress:08X}: {h}  {s}'
 
 
 def main(argv):
-    status = 0
     try:
         config = Config().init(CONFIG)
         config.argparse.add_argument('inputs', metavar='FILE', nargs='+')
@@ -67,15 +63,15 @@ def main(argv):
 
         dfs = memdf.collect.collect_files(config)
 
-        elf = {}
-        for filename in config['args.inputs']:
-            elf[filename] = {
+        elf = {
+            filename: {
                 'elffile': ELFFile(open(filename, 'rb')),
                 'section': {},
                 'data': {},
                 'limit': {},
             }
-
+            for filename in config['args.inputs']
+        }
         with memdf.report.open_output(config) as fp:
             for i in dfs['gap'].itertuples():
                 e = elf[i.input]
@@ -103,7 +99,7 @@ def main(argv):
     except Exception as exception:
         raise exception
 
-    return status
+    return 0
 
 
 if __name__ == '__main__':

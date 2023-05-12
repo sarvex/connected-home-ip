@@ -80,9 +80,9 @@ class ErrorCodeLoader:
         last_comment = "".join(self._last_comment).replace("   ", " ").replace("  ", " ").replace("*", "").replace(".", "")
         last_comment = last_comment.split("@brief")[-1].strip()
 
-        code = int(match.group("code"), 0)
-        code = descriptor.code_range | code
-        name = match.group("name")
+        code = int(match["code"], 0)
+        code |= descriptor.code_range
+        name = match["name"]
 
         description = last_comment if descriptor.include_description else ""
         self._error_codes.append(ErrorCode(code=code, name=name, description=description))

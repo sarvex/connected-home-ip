@@ -175,7 +175,7 @@ class TestRunnerLogger(TestRunnerHooks):
         else:
             state = _SUCCESS
 
-        if self.__use_test_harness_log_format and (state == _SUCCESS or state == _WARNING):
+        if self.__use_test_harness_log_format and state in [_SUCCESS, _WARNING]:
             print(self.__strings.test_harness_test_stop_success.format(filename=self.__filename))
 
         successes = click.style(self.__successes, bold=True)
@@ -316,11 +316,10 @@ class TestRunnerLogger(TestRunnerHooks):
         elif isinstance(data, list):
             return [self.__prepare_data_for_printing(entry) for entry in data]
         elif isinstance(data, dict):
-            result = {}
-            for key, value in data.items():
-                result[key] = self.__prepare_data_for_printing(value)
-            return result
-
+            return {
+                key: self.__prepare_data_for_printing(value)
+                for key, value in data.items()
+            }
         return data
 
 

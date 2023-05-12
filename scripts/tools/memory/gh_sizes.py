@@ -119,8 +119,6 @@ CONFIG: ConfigDescription = {
 
 
 def main(argv):
-    status = 0
-
     try:
         _, platform, config_name, target_name, binary, *args = argv
     except ValueError:
@@ -219,7 +217,7 @@ def main(argv):
     except Exception as exception:
         raise exception
 
-    return status
+    return 0
 
 
 if __name__ == '__main__':

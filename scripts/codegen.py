@@ -121,7 +121,7 @@ def main(log_level, generator, option, output_dir, dry_run, name_only, expected_
     else:
         storage = FileSystemGeneratorStorage(output_dir)
 
-    logging.info("Parsing idl from %s" % idl_path)
+    logging.info(f"Parsing idl from {idl_path}")
     idl_tree = CreateParser().parse(open(idl_path, "rt").read())
 
     plugin_module = None
@@ -133,7 +133,9 @@ def main(log_level, generator, option, output_dir, dry_run, name_only, expected_
             sys.exit(1)
         (generator, plugin_path, plugin_module) = custom_params
 
-        logging.info("Using CustomGenerator at plugin path %s.%s" % (plugin_path, plugin_module))
+        logging.info(
+            f"Using CustomGenerator at plugin path {plugin_path}.{plugin_module}"
+        )
         sys.path.append(plugin_path)
         generator = 'CUSTOM'
 
@@ -145,16 +147,15 @@ def main(log_level, generator, option, output_dir, dry_run, name_only, expected_
         key, value = o.split(':')
         extra_args[key] = value
 
-    logging.info("Running code generator %s" % generator)
+    logging.info(f"Running code generator {generator}")
     generator = CodeGenerator.FromString(generator).Create(storage, idl=idl_tree, plugin_module=plugin_module, **extra_args)
     generator.render(dry_run)
 
     if expected_outputs:
         with open(expected_outputs, 'rt') as fin:
             expected = set()
-            for l in fin.readlines():
-                l = l.strip()
-                if l:
+            for l in fin:
+                if l := l.strip():
                     expected.add(l)
 
             if expected != storage.generated_paths:
@@ -164,10 +165,10 @@ def main(log_level, generator, option, output_dir, dry_run, name_only, expected_
                 missing = expected - storage.generated_paths
 
                 for name in extra:
-                    logging.fatal("   '%s' was generated but not expected" % name)
+                    logging.fatal(f"   '{name}' was generated but not expected")
 
                 for name in missing:
-                    logging.fatal("   '%s' was expected but not generated" % name)
+                    logging.fatal(f"   '{name}' was expected but not generated")
 
                 sys.exit(1)
 

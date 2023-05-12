@@ -70,7 +70,7 @@ async def execute_test(yaml, runner):
         post_processing_result = test_step.post_process_response(
             decoded_response)
         if not post_processing_result.is_success():
-            logging.warning(f"Test step failure in 'test_step.label'")
+            logging.warning("Test step failure in 'test_step.label'")
             for entry in post_processing_result.entries:
                 if entry.state == PostProcessCheckStatus.SUCCESS:
                     continue
@@ -127,9 +127,9 @@ def main(setup_code, yaml_path, node_id, pics_file):
 
         try:
             # Creating Cluster definition.
-            clusters_definitions = SpecDefinitionsFromPaths([
-                _CLUSTER_XML_DIRECTORY_PATH + '/chip/*.xml',
-            ])
+            clusters_definitions = SpecDefinitionsFromPaths(
+                [f'{_CLUSTER_XML_DIRECTORY_PATH}/chip/*.xml']
+            )
 
             # Parsing YAML test and setting up chip-repl yamltests runner.
             parser_config = TestParserConfig(pics_file, clusters_definitions)

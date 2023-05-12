@@ -100,14 +100,13 @@ class ZAPGenerateTarget:
         self.zap_config = str(zap_config)
         self.template = template
 
-        if output_dir:
-            # make sure we convert  any os.PathLike object to string
-            self.output_dir = str(output_dir)
-        else:
-            self.output_dir = None
+        self.output_dir = str(output_dir) if output_dir else None
 
     def distinct_output(self):
-        if not self.template and not self.output_dir:
+        if self.template or self.output_dir:
+            return ZapDistinctOutput(input_template=self.template, output_directory=self.output_dir)
+
+        else:
             # Matter IDL templates have no template/output dir as they go with the
             # default.
             #
@@ -115,13 +114,11 @@ class ZAPGenerateTarget:
             # directory (e.g. chef) so we claim the zap config is an output directory
             # for uniqueness
             return ZapDistinctOutput(input_template=None, output_directory=self.zap_config)
-        else:
-            return ZapDistinctOutput(input_template=self.template, output_directory=self.output_dir)
 
     def log_command(self):
         """Log the command that will get run for this target
         """
-        logging.info("  %s" % " ".join(self.build_cmd()))
+        logging.info(f'  {" ".join(self.build_cmd())}')
 
     def build_cmd(self):
         """Builds the command line we would run to generate this target.
@@ -129,22 +126,18 @@ class ZAPGenerateTarget:
         cmd = [self.script, self.zap_config]
 
         if self.template:
-            cmd.append('-t')
-            cmd.append(self.template)
-
+            cmd.extend(('-t', self.template))
         if self.output_dir:
             if not os.path.exists(self.output_dir):
                 os.makedirs(self.output_dir)
-            cmd.append('-o')
-            cmd.append(self.output_dir)
-
+            cmd.extend(('-o', self.output_dir))
         return cmd
 
     def generate(self) -> TargetRunStats:
         """Runs a ZAP generate command on the configured zap/template/outputs.
         """
         cmd = self.build_cmd()
-        logging.info("Generating target: %s" % " ".join(cmd))
+        logging.info(f'Generating target: {" ".join(cmd)}')
 
         generate_start = time.time()
         subprocess.check_call(cmd)
@@ -200,7 +193,7 @@ class GoldenTestImageTarget():
         return ZapDistinctOutput(input_template='GOLDEN_IMAGES', output_directory='GOLDEN_IMAGES')
 
     def log_command(self):
-        logging.info("  %s" % " ".join(self.command))
+        logging.info(f'  {" ".join(self.command)}')
 
 
 class JinjaCodegenTarget():
@@ -221,7 +214,7 @@ class JinjaCodegenTarget():
 
             logging.info("Prettifying %d java files:", len(java_outputs))
             for name in java_outputs:
-                logging.info("    %s" % name)
+                logging.info(f"    {name}")
 
             # Keep this version in sync with what restyler uses (https://github.com/project-chip/connectedhomeip/blob/master/.restyled.yaml).
             FORMAT_VERSION = "1.6"
@@ -255,7 +248,7 @@ class JinjaCodegenTarget():
         return ZapDistinctOutput(input_template=f'{self.generator}{self.idl_path}', output_directory=self.output_directory)
 
     def log_command(self):
-        logging.info("  %s" % " ".join(self.command))
+        logging.info(f'  {" ".join(self.command)}')
 
 
 def checkPythonVersion():
@@ -289,8 +282,7 @@ def setupArgumentsParser():
         args.type = TargetType.ALL  # default instead of a list
     else:
         # convert the list into a single flag value
-        types = [t for t in map(lambda x: __TARGET_TYPES__[
-                                x.lower()], args.type)]
+        types = list(map(lambda x: __TARGET_TYPES__[x.lower()], args.type))
         args.type = types[0]
         for t in types:
             args.type = args.type | t
@@ -312,8 +304,7 @@ def getGlobalTemplatesTargets():
             example_name = example_name[example_name.index(
                 'apps/') + len('apps/'):]
             example_name = example_name[:example_name.index('/')]
-            logging.info("Found example %s (via %s)" %
-                         (example_name, str(filepath)))
+            logging.info(f"Found example {example_name} (via {str(filepath)})")
 
             # The name zap-generated is to make includes clear by using
             # a name like <zap-generated/foo.h>
@@ -322,8 +313,14 @@ def getGlobalTemplatesTargets():
             template = os.path.join(
                 'examples', 'placeholder', 'linux', 'apps', example_name, 'templates', 'templates.json')
 
-            targets.append(ZAPGenerateTarget.MatterIdlTarget(filepath))
-            targets.append(ZAPGenerateTarget(filepath, output_dir=output_dir, template=template))
+            targets.extend(
+                (
+                    ZAPGenerateTarget.MatterIdlTarget(filepath),
+                    ZAPGenerateTarget(
+                        filepath, output_dir=output_dir, template=template
+                    ),
+                )
+            )
             continue
 
         if example_name == "chef":
@@ -331,15 +328,15 @@ def getGlobalTemplatesTargets():
                 continue
             example_name = "chef-"+os.path.basename(filepath)[:-len(".zap")]
 
-        logging.info("Found example %s (via %s)" %
-                     (example_name, str(filepath)))
+        logging.info(f"Found example {example_name} (via {str(filepath)})")
 
         generate_subdir = example_name
 
         # Special casing lighting app because separate folders
-        if example_name == "lighting-app" or example_name == "lock-app":
-            if 'nxp' in str(filepath):
-                generate_subdir = f"{example_name}/nxp"
+        if example_name in ["lighting-app", "lock-app"] and 'nxp' in str(
+            filepath
+        ):
+            generate_subdir = f"{example_name}/nxp"
 
         # The name zap-generated is to make includes clear by using
         # a name like <zap-generated/foo.h>
@@ -347,30 +344,29 @@ def getGlobalTemplatesTargets():
             'zzz_generated', generate_subdir, 'zap-generated')
         targets.append(ZAPGenerateTarget.MatterIdlTarget(filepath))
 
-    targets.append(ZAPGenerateTarget.MatterIdlTarget('src/controller/data_model/controller-clusters.zap'))
-
-    # This generates app headers for darwin only, for easier/clearer include
-    # in .pbxproj files.
-    #
-    # TODO: These files can be code generated at compile time, we should figure
-    #       out a path for this codegen to not be required.
-    targets.append(ZAPGenerateTarget(
-        'src/controller/data_model/controller-clusters.zap',
-        template="src/app/zap-templates/app-templates.json",
-        output_dir='zzz_generated/darwin/controller-clusters/zap-generated'))
-
+    targets.extend(
+        (
+            ZAPGenerateTarget.MatterIdlTarget(
+                'src/controller/data_model/controller-clusters.zap'
+            ),
+            ZAPGenerateTarget(
+                'src/controller/data_model/controller-clusters.zap',
+                template="src/app/zap-templates/app-templates.json",
+                output_dir='zzz_generated/darwin/controller-clusters/zap-generated',
+            ),
+        )
+    )
     return targets
 
 
 def getCodegenTemplates():
-    targets = []
-
-    targets.append(JinjaCodegenTarget(
-        generator="java-class",
-        idl_path="src/controller/data_model/controller-clusters.matter",
-        output_directory="src/controller/java/generated"))
-
-    return targets
+    return [
+        JinjaCodegenTarget(
+            generator="java-class",
+            idl_path="src/controller/data_model/controller-clusters.matter",
+            output_directory="src/controller/java/generated",
+        )
+    ]
 
 
 def getTestsTemplatesTargets(test_target):
@@ -389,9 +385,8 @@ def getTestsTemplatesTargets(test_target):
 
     targets = []
     for key, target in templates.items():
-        if test_target == 'all' or test_target == key:
-            logging.info("Found test target %s (via %s)" %
-                         (key, target['template']))
+        if test_target in ['all', key]:
+            logging.info(f"Found test target {key} (via {target['template']})")
             targets.append(ZAPGenerateTarget(
                 target['zap'], template=target['template'], output_dir=target['output_dir']))
 
@@ -418,7 +413,7 @@ def getSpecificTemplatesTargets():
 
     targets = []
     for template, output_dir in templates.items():
-        logging.info("Found specific template %s" % template)
+        logging.info(f"Found specific template {template}")
         targets.append(ZAPGenerateTarget(
             zap_filepath, template=template, output_dir=output_dir))
 
@@ -457,7 +452,7 @@ def getTargets(type, test_target):
             logging.error("Same output %r:" % o)
             for t in targets:
                 if t.distinct_output() == o:
-                    logging.error("   %s" % t.zap_config)
+                    logging.error(f"   {t.zap_config}")
 
             raise Exception("Duplicate/overlapping output directory: %r" % o)
 
@@ -497,12 +492,9 @@ def main():
         # Ensure each zap run is independent
         os.environ['ZAP_TEMPSTATE'] = '1'
         with multiprocessing.Pool() as pool:
-            for timing in pool.imap_unordered(_ParallelGenerateOne, targets):
-                timings.append(timing)
+            timings.extend(iter(pool.imap_unordered(_ParallelGenerateOne, targets)))
     else:
-        for target in targets:
-            timings.append(target.generate())
-
+        timings.extend(target.generate() for target in targets)
     timings.sort(key=lambda t: t.generate_time)
 
     print(" Time (s) | {:^50} | {:^50}".format("Config", "Template"))
@@ -517,12 +509,18 @@ def main():
             tmpl = tmpl.replace("/zap-templates/", "/../")
             tmpl = tmpl.replace("/templates/", "/../")
 
-        print(" %8d | %50s | %50s" % (
-            timing.generate_time,
-            ".." + timing.config[len(timing.config) -
-                                 48:] if len(timing.config) > 50 else timing.config,
-            ".." + tmpl[len(tmpl) - 48:] if len(tmpl) > 50 else tmpl,
-        ))
+        print(
+            (
+                " %8d | %50s | %50s"
+                % (
+                    timing.generate_time,
+                    f"..{timing.config[len(timing.config) - 48:]}"
+                    if len(timing.config) > 50
+                    else timing.config,
+                    f"..{tmpl[len(tmpl) - 48:]}" if len(tmpl) > 50 else tmpl,
+                )
+            )
+        )
 
 
 if __name__ == '__main__':

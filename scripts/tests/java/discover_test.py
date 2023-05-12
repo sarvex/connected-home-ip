@@ -55,15 +55,19 @@ class DiscoverTest:
         logging.info(f"Execute: {java_command}")
         java_process = subprocess.Popen(
             java_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        DumpProgramOutputToQueue(self.thread_list, Fore.GREEN + "JAVA " + Style.RESET_ALL, java_process, self.queue)
+        DumpProgramOutputToQueue(
+            self.thread_list,
+            f"{Fore.GREEN}JAVA {Style.RESET_ALL}",
+            java_process,
+            self.queue,
+        )
         return java_process.wait()
 
     def RunTest(self):
         logging.info("Testing discovering commissionables devices")
 
-        if self.command_name == 'commissionables':
-            code = self.TestCmdCommissionables()
-            if code != 0:
-                raise Exception(f"Testing command commissionables failed with error {code}")
-        else:
+        if self.command_name != 'commissionables':
             raise Exception(f"Unsupported command {self.command_name}")
+        code = self.TestCmdCommissionables()
+        if code != 0:
+            raise Exception(f"Testing command commissionables failed with error {code}")

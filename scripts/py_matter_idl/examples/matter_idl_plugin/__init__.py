@@ -50,7 +50,7 @@ def toEnumEntryName(enumEntry, enumName):
     prefix = toUpperAcronym(enumName)
     if (enumEntry[0] == 'k'):
         enumEntry = enumEntry[1:]
-    return prefix + '_' + toUpperSnakeCase(enumEntry)
+    return f'{prefix}_{toUpperSnakeCase(enumEntry)}'
 
 
 def toProtobufType(zapType: str) -> str:
@@ -71,8 +71,6 @@ def toProtobufType(zapType: str) -> str:
     i64Types = ["int64", "int40s", "int48s", "int56s", "int64s"]
     floatTypes = ["float", "double"]
     stringTypes = ["char_string", "long_char_string"]
-    bytesTypes = ["octet_string", "long_octet_string"]
-
     zapTypeLower = zapType.lower()
     if zapTypeLower in u32Types:
         return "uint32"
@@ -90,11 +88,9 @@ def toProtobufType(zapType: str) -> str:
         return "bool"
     if zapTypeLower in stringTypes:
         return "string"
-    if zapTypeLower in bytesTypes:
-        return "bytes"
+    bytesTypes = ["octet_string", "long_octet_string"]
 
-    # If no match, return the original type name for the Struct, Enum, or Bitmap.
-    return zapType
+    return "bytes" if zapTypeLower in bytesTypes else zapType
 
 
 # Enum for encoding the type information into protobuf field tag for stateless translation.
@@ -137,21 +133,26 @@ class EncodingDataType:
 
 def commandArgs(command: Command, cluster: Cluster):
     """Return the list of fields for the command request for the given command and cluster."""
-    for struct in cluster.structs:
-        if struct.name == command.input_param:
-            return struct.fields
-
-    # If the command has no input parameters, just return an empty list.
-    return []
+    return next(
+        (
+            struct.fields
+            for struct in cluster.structs
+            if struct.name == command.input_param
+        ),
+        [],
+    )
 
 
 def commandResponseArgs(command: Command, cluster: Cluster):
     """Return the list of fields for the command response for the given command and cluster."""
-    for struct in cluster.structs:
-        if struct.name == command.output_param:
-            return struct.fields
-
-    return []
+    return next(
+        (
+            struct.fields
+            for struct in cluster.structs
+            if struct.name == command.output_param
+        ),
+        [],
+    )
 
 
 def toEncodedTag(tag, typeNum: EncodingDataType):
@@ -167,25 +168,27 @@ def toProtobufFullType(field: Field):
     prefix = ""
     protobufType = toProtobufType(field.data_type.name)
     if field.is_list:
-        prefix = "repeated " + prefix
+        prefix = f"repeated {prefix}"
     elif field.is_optional:
-        prefix = "optional " + prefix
+        prefix = f"optional {prefix}"
     return prefix + protobufType
 
 
 def toFieldTag(field: Field):
     protobufType = toProtobufType(field.data_type.name)
     typeNum = EncodingDataType.fromType(protobufType)
-    tag = toEncodedTag(field.code, typeNum)
-    return tag
+    return toEncodedTag(field.code, typeNum)
 
 
 def toFieldComment(field: Field):
     protobufType = toProtobufType(field.data_type.name)
     typeNum = EncodingDataType.fromType(protobufType)
-    tagComment = "/** %s Type: %d IsList: %d FieldId: %d */" % (
-        field.data_type.name, typeNum, field.is_list, field.code)
-    return tagComment
+    return "/** %s Type: %d IsList: %d FieldId: %d */" % (
+        field.data_type.name,
+        typeNum,
+        field.is_list,
+        field.code,
+    )
 
 
 class CustomGenerator(CodeGenerator):

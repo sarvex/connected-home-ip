@@ -140,7 +140,7 @@ class TestSuiteParserBuilder(unittest.TestCase):
         parser_builder = TestParserBuilder(parser_builder_config)
         self.assertIsInstance(parser_builder, TestParserBuilder)
 
-        for i in range(0, 5):
+        for _ in range(0, 5):
             self.assertIsInstance(next(parser_builder), TestParser)
 
         self.assertRaises(StopIteration, next, parser_builder)
@@ -152,9 +152,6 @@ class TestSuiteParserBuilder(unittest.TestCase):
 
         parser_builder = TestParserBuilder(parser_builder_config)
         self.assertIsInstance(parser_builder, TestParserBuilder)
-
-        for parser in parser_builder:
-            pass
 
         self.assertRaises(StopIteration, next, parser_builder)
 
@@ -172,9 +169,6 @@ class TestSuiteParserBuilder(unittest.TestCase):
         parser_builder = TestParserBuilder(parser_builder_config)
         self.assertIsInstance(parser_builder, TestParserBuilder)
 
-        for parser in parser_builder:
-            pass
-
         self.assertRaises(StopIteration, next, parser_builder)
 
         self.assertEqual(hooks.start_count, 1)
@@ -190,9 +184,6 @@ class TestSuiteParserBuilder(unittest.TestCase):
 
         parser_builder = TestParserBuilder(parser_builder_config)
         self.assertIsInstance(parser_builder, TestParserBuilder)
-
-        for parser in parser_builder:
-            pass
 
         self.assertRaises(StopIteration, next, parser_builder)
 

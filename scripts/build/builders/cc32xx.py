@@ -50,11 +50,7 @@ class cc32xxBuilder(GnBuilder):
         self.app = app
 
     def GnBuildArgs(self):
-        args = [
-            'ti_sysconfig_root="%s"' % os.environ['TI_SYSCONFIG_ROOT'],
-        ]
-
-        return args
+        return [f"""ti_sysconfig_root="{os.environ['TI_SYSCONFIG_ROOT']}\""""]
 
     def build_outputs(self):
         items = {}
@@ -65,7 +61,7 @@ class cc32xxBuilder(GnBuilder):
             raise Exception('Unknown app type: %r' % self.app)
 
         for extension in extensions:
-            name = '%s%s' % (self.app.AppNamePrefix(), extension)
+            name = f'{self.app.AppNamePrefix()}{extension}'
             items[name] = os.path.join(self.output_dir, name)
 
         return items

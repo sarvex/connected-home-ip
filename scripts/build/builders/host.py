@@ -218,7 +218,7 @@ class HostBoard(Enum):
             # standardize some common platforms
             if arch == 'x86_64':
                 arch = 'x64'
-            elif arch == 'i386' or arch == 'i686':
+            elif arch in ['i386', 'i686']:
                 arch = 'x86'
             elif arch in ('aarch64', 'aarch64_be', 'armv8b', 'armv8l'):
                 arch = 'arm64'
@@ -322,7 +322,9 @@ class HostBuilder(GnBuilder):
         if minmdns_address_policy:
             if use_platform_mdns:
                 raise Exception('Address policy applies to minmdns only')
-            self.extra_gn_options.append('chip_minmdns_default_policy="%s"' % minmdns_address_policy)
+            self.extra_gn_options.append(
+                f'chip_minmdns_default_policy="{minmdns_address_policy}"'
+            )
 
         if use_platform_mdns:
             self.extra_gn_options.append('chip_mdns="platform"')
@@ -350,9 +352,8 @@ class HostBuilder(GnBuilder):
         if crypto_library:
             self.extra_gn_options.append(crypto_library.gn_argument)
 
-        if self.board == HostBoard.ARM64:
-            if not use_clang:
-                raise Exception("Cross compile only supported using clang")
+        if self.board == HostBoard.ARM64 and not use_clang:
+            raise Exception("Cross compile only supported using clang")
 
         if app == HostApp.CERT_TOOL:
             # Certification only built for openssl
@@ -382,7 +383,7 @@ class HostBuilder(GnBuilder):
             self.extra_gn_options.extend(
                 [
                     'target_cpu="arm64"',
-                    'sysroot="%s"' % self.SysRootPath('SYSROOT_AARCH64')
+                    f"""sysroot="{self.SysRootPath('SYSROOT_AARCH64')}\"""",
                 ]
             )
 
@@ -402,11 +403,7 @@ class HostBuilder(GnBuilder):
 
     def createJavaExecutable(self, java_program):
         self._Execute(
-            [
-                "chmod",
-                "+x",
-                "%s/bin/%s" % (self.output_dir, java_program),
-            ],
+            ["chmod", "+x", f"{self.output_dir}/bin/{java_program}"],
             title="Make Java program executable",
         )
 
@@ -418,7 +415,7 @@ class HostBuilder(GnBuilder):
 
     def SysRootPath(self, name):
         if name not in os.environ:
-            raise Exception('Missing environment variable "%s"' % name)
+            raise Exception(f'Missing environment variable "{name}"')
         return os.environ[name]
 
     def generate(self):
@@ -437,7 +434,7 @@ class HostBuilder(GnBuilder):
                         os.path.join(self.root, "Manifest.txt"),
                         self.output_dir,
                     ],
-                    title="Copying Manifest.txt to " + self.output_dir,
+                    title=f"Copying Manifest.txt to {self.output_dir}",
                 )
 
         if self.app == HostApp.TESTS and self.use_coverage:
@@ -480,12 +477,8 @@ class HostBuilder(GnBuilder):
             if os.path.isdir(path):
                 for root, dirs, files in os.walk(path):
                     for file in files:
-                        outputs.update({
-                            file: os.path.join(root, file)
-                        })
+                        outputs[file] = os.path.join(root, file)
             else:
-                outputs.update({
-                    name: os.path.join(self.output_dir, name)
-                })
+                outputs[name] = os.path.join(self.output_dir, name)
 
         return outputs

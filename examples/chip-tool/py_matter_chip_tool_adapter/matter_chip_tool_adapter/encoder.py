@@ -199,7 +199,11 @@ class Encoder:
         endpoint_argument_name = 'endpoint-id-ignored-for-group-commands'
         endpoint_argument_value = request.endpoint
 
-        if (request.is_attribute and not request.command == "writeAttribute") or request.is_event:
+        if (
+            request.is_attribute
+            and request.command != "writeAttribute"
+            or request.is_event
+        ):
             endpoint_argument_name = 'endpoint-ids'
 
         if rv:
@@ -328,7 +332,4 @@ class Encoder:
             return True
 
         aliases = aliases.get(request.command)
-        if aliases is None:
-            return True
-
-        return aliases.get(feature_name, True)
+        return True if aliases is None else aliases.get(feature_name, True)

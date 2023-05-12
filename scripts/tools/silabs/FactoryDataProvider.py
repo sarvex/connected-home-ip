@@ -119,7 +119,7 @@ class FactoryDataWriter:
         offset = self.WriteBits(fillBits, offset, self._args.passcode, kSetupPINCodeFieldLengthInBits, kTotalPayloadDataSizeInBits)
         offset = self.WriteBits(fillBits, offset, 0, kPaddingFieldLengthInBits, kTotalPayloadDataSizeInBits)
 
-        return str(bytes(fillBits).hex())
+        return bytes(fillBits).hex()
 
     def __init__(self, arguments) -> None:
         """ Do some checks on the received arguments.
@@ -129,33 +129,31 @@ class FactoryDataWriter:
         Args:
             The whole set of args passed to the script.
         """
-        kMaxVendorNameLength = 32
-        kMaxProductNameLength = 32
-        kMaxHardwareVersionStringLength = 64
-        kMaxSerialNumberLength = 32
-        kUniqueIDLength = 16
-        kMaxProductUrlLenght = 256
-        kMaxPartNumberLength = 32
-        kMaxProductLabelLength = 64
-
         INVALID_PASSCODES = [00000000, 11111111, 22222222, 33333333, 44444444,
                              55555555, 66666666, 77777777, 88888888, 99999999, 12345678, 87654321]
 
         assert (bool(arguments.gen_spake2p_path) != bool(arguments.spake2_verifier)
                 ), "Provide either the spake2_verifier string or the path to the spake2 generator"
-        assert not (arguments.passcode in INVALID_PASSCODES), "The provided passcode is invalid"
+        assert (
+            arguments.passcode not in INVALID_PASSCODES
+        ), "The provided passcode is invalid"
 
         self._args = arguments
 
         if self._args.unique_id:
+            kUniqueIDLength = 16
             assert (len(bytearray.fromhex(self._args.unique_id)) == kUniqueIDLength), "Provide a 16 bytes unique id"
         if self._args.product_name:
+            kMaxProductNameLength = 32
             assert (len(self._args.product_name) <= kMaxProductNameLength), "Product name exceeds the size limit"
         if self._args.vendor_name:
+            kMaxVendorNameLength = 32
             assert (len(self._args.vendor_name) <= kMaxVendorNameLength), "Vendor name exceeds the size limit"
         if self._args.hw_version_str:
+            kMaxHardwareVersionStringLength = 64
             assert (len(self._args.hw_version_str) <= kMaxHardwareVersionStringLength), "Hardware version string exceeds the size limit"
         if self._args.serial_number:
+            kMaxSerialNumberLength = 32
             assert (len(self._args.serial_number) <= kMaxSerialNumberLength), "Serial number exceeds the size limit"
         if self._args.manufacturing_date:
             try:
@@ -169,10 +167,14 @@ class FactoryDataWriter:
         if self._args.gen_spake2p_path:
             self._args.spake2_verifier = self.generate_spake2p_verifier()
         if self._args.product_label:
+            kMaxProductLabelLength = 64
+
             assert (len(self._args.product_label) <= kMaxProductLabelLength), "Product Label exceeds the size limit"
         if self._args.product_url:
+            kMaxProductUrlLenght = 256
             assert (len(self._args.product_url) <= kMaxProductUrlLenght), "Product URL exceeds the size limit"
         if self._args.part_number:
+            kMaxPartNumberLength = 32
             assert (len(self._args.part_number) <= kMaxPartNumberLength), "Part number exceeds the size limit"
 
     def add_SerialNo_To_CMD(self, cmdList):
@@ -204,7 +206,7 @@ class FactoryDataWriter:
             try:
                 output = subprocess.check_output(cmd)
                 output = output.decode('utf-8').splitlines()
-                deviceInfo = dict(map(str.strip, lines.split(':')) for lines in output[0:len(output)-1])
+                deviceInfo = dict(map(str.strip, lines.split(':')) for lines in output[:-1])
                 # Only MG12 and MG24 are supported in matter currently
                 if "EFR32MG12" in deviceInfo["Part Number"]:
                     inputImage = self.BASE_MG12_FILE
@@ -217,9 +219,9 @@ class FactoryDataWriter:
                 print("Device not connected")
                 # When no device is connected user needs to provide the mcu family for which those credentials are to be created
                 if self._args.mcu_family:
-                    if "EFR32MG12" == self._args.mcu_family:
+                    if self._args.mcu_family == "EFR32MG12":
                         inputImage = self.BASE_MG12_FILE
-                    elif "EFR32MG24" == self._args.mcu_family:
+                    elif self._args.mcu_family == "EFR32MG24":
                         inputImage = self.BASE_MG24_FILE
                 else:
                     print("Connect debug port or provide the mcu_family")
@@ -236,23 +238,33 @@ class FactoryDataWriter:
 
         # create the binary containing the new nvm3 data
         cmd = [
-            "commander", "nvm3", "set", inputImage,
-            "--object", self.DISCRIMINATOR_NVM3_KEY + str(discriminator),
-            "--object", self.SETUP_PAYLOAD_NVM3_KEY + self.generateQrCodeBitSet(),
-            "--object", self.ITERATIONCOUNT_NVM3_KEY + str(spake2pIterationCount),
-            "--object", self.SALT_NVM3_KEY + str(saltByteArray),
-            "--object", self.VERIFIER_NVM3_KEY + str(verifierByteArray),
-            "--object", self.PRODUCT_ID_NVM3_KEY + str(productId),
-            "--object", self.VENDOR_ID_NVM3_KEY + str(vendorId),
+            "commander",
+            "nvm3",
+            "set",
+            inputImage,
+            "--object",
+            self.DISCRIMINATOR_NVM3_KEY + str(discriminator),
+            "--object",
+            self.SETUP_PAYLOAD_NVM3_KEY + self.generateQrCodeBitSet(),
+            "--object",
+            self.ITERATIONCOUNT_NVM3_KEY + str(spake2pIterationCount),
+            "--object",
+            self.SALT_NVM3_KEY + saltByteArray,
+            "--object",
+            self.VERIFIER_NVM3_KEY + verifierByteArray,
+            "--object",
+            self.PRODUCT_ID_NVM3_KEY + str(productId),
+            "--object",
+            self.VENDOR_ID_NVM3_KEY + str(vendorId),
         ]
 
         if self._args.product_name:
             productNameByteArray = bytes(self._args.product_name, 'utf-8').hex()
-            cmd.extend(["--object", self.PRODUCT_NAME_NVM3_KEY + str(productNameByteArray)])
+            cmd.extend(["--object", self.PRODUCT_NAME_NVM3_KEY + productNameByteArray])
 
         if self._args.vendor_name:
             vendorNameByteArray = bytes(self._args.vendor_name, 'utf-8').hex()
-            cmd.extend(["--object", self.VENDOR_NAME_NVM3_KEY + str(vendorNameByteArray)])
+            cmd.extend(["--object", self.VENDOR_NAME_NVM3_KEY + vendorNameByteArray])
 
         if self._args.hw_version:
             hwVersionByteArray = self._args.hw_version.to_bytes(2, "little").hex()
@@ -260,30 +272,30 @@ class FactoryDataWriter:
 
         if self._args.hw_version_str:
             hwVersionByteArray = bytes(self._args.hw_version_str, 'utf-8').hex()
-            cmd.extend(["--object", self.HW_VER_STR_NVM3_KEY + str(hwVersionByteArray)])
+            cmd.extend(["--object", self.HW_VER_STR_NVM3_KEY + hwVersionByteArray])
 
         if self._args.unique_id:
             cmd.extend(["--object", self.UNIQUE_ID_NVM3_KEY + self._args.unique_id])
 
         if self._args.manufacturing_date:
             dateByteArray = bytes(self._args.manufacturing_date, 'utf-8').hex()
-            cmd.extend(["--object", self.MANUFACTURING_DATE_NVM3_KEY + str(dateByteArray)])
+            cmd.extend(["--object", self.MANUFACTURING_DATE_NVM3_KEY + dateByteArray])
 
         if self._args.serial_number:
             serialNumberByteArray = bytes(self._args.serial_number, 'utf-8').hex()
-            cmd.extend(["--object", self.SERIAL_NUMBER_NVM3_KEY + str(serialNumberByteArray)])
+            cmd.extend(["--object", self.SERIAL_NUMBER_NVM3_KEY + serialNumberByteArray])
 
         if self._args.part_number:
             partNumberByteArray = bytes(self._args.part_number, 'utf-8').hex()
-            cmd.extend(["--object", self.PART_NUMBER_NVM3_KEY + str(partNumberByteArray)])
+            cmd.extend(["--object", self.PART_NUMBER_NVM3_KEY + partNumberByteArray])
 
         if self._args.product_label:
             productLabelByteArray = bytes(self._args.product_label, 'utf-8').hex()
-            cmd.extend(["--object", self.PRODUCT_LABEL_NVM3_KEY + str(productLabelByteArray)])
+            cmd.extend(["--object", self.PRODUCT_LABEL_NVM3_KEY + productLabelByteArray])
 
         if self._args.product_url:
             productUrlByteArray = bytes(self._args.product_url, 'utf-8').hex()
-            cmd.extend(["--object", self.PRODUCT_URL_NVM3_KEY + str(productUrlByteArray)])
+            cmd.extend(["--object", self.PRODUCT_URL_NVM3_KEY + productUrlByteArray])
 
         cmd.extend(["--outfile", self.OUT_FILE])
         results = subprocess.run(cmd)

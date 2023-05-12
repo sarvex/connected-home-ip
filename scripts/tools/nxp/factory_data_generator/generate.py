@@ -80,7 +80,9 @@ class KlvGenerator:
 
         str_args = [obj for key, obj in vars(self.args).items() if isinstance(obj, StrArgument)]
         for str_arg in str_args:
-            logging.info("key: {} len: {} maxlen: {}".format(str_arg.key(), str_arg.length(), str_arg.max_length()))
+            logging.info(
+                f"key: {str_arg.key()} len: {str_arg.length()} maxlen: {str_arg.max_length()}"
+            )
             assert str_arg.length() <= str_arg.max_length()
 
     def generate(self):
@@ -94,7 +96,7 @@ class KlvGenerator:
         The new list will contain only InputArgument objects, which
         generate a (K, L, V) tuple through output() method.
         '''
-        data = list()
+        data = []
 
         data = [obj for key, obj in vars(self.args).items() if isinstance(obj, InputArgument)]
         data = [arg.output() for arg in sorted(data, key=lambda x: x.key())]
@@ -113,8 +115,8 @@ class KlvGenerator:
             if (aes128_key is None):
                 # Calculate 4 bytes of hashing
                 hashing = hashlib.sha256(fullContent).hexdigest()
-                hashing = hashing[0:8]
-                logging.info("4 byte section hash (for integrity check): {}".format(hashing))
+                hashing = hashing[:8]
+                logging.info(f"4 byte section hash (for integrity check): {hashing}")
 
                 # Add 4 bytes of hashing to generated binary to check for integrity
                 fullContent = bytearray.fromhex(hashing) + fullContent
@@ -129,7 +131,7 @@ class KlvGenerator:
 
                 size = len(fullContent)
 
-                logging.info("Size of final generated binary is: {} bytes".format(size))
+                logging.info(f"Size of final generated binary is: {size} bytes")
                 file.write(fullContent)
             else:
                 # In case a aes128_key is given the data will be encrypted
@@ -137,18 +139,18 @@ class KlvGenerator:
                 padding_len = size % 16
                 padding_len = 16 - padding_len
                 padding_bytes = bytearray(padding_len)
-                logging.info("(Before padding) Size of generated binary is: {} bytes".format(size))
+                logging.info(f"(Before padding) Size of generated binary is: {size} bytes")
                 fullContent += padding_bytes
                 size = len(fullContent)
-                logging.info("(After padding) Size of generated binary is: {} bytes".format(size))
+                logging.info(f"(After padding) Size of generated binary is: {size} bytes")
                 from Crypto.Cipher import AES
                 cipher = AES.new(bytes.fromhex(aes128_key), AES.MODE_ECB)
                 fullContentCipher = cipher.encrypt(fullContent)
 
                 # Add 4 bytes of hashing to generated binary to check for integrity
                 hashing = hashlib.sha256(fullContent).hexdigest()
-                hashing = hashing[0:8]
-                logging.info("4 byte section hash (for integrity check): {}".format(hashing))
+                hashing = hashing[:8]
+                logging.info(f"4 byte section hash (for integrity check): {hashing}")
                 fullContentCipher = bytearray.fromhex(hashing) + fullContentCipher
 
                 # Add length of data to binary to know how to calculate SHA on embedded
@@ -161,11 +163,11 @@ class KlvGenerator:
 
                 size = len(fullContentCipher)
 
-                logging.info("Size of final generated binary is: {} bytes".format(size))
+                logging.info(f"Size of final generated binary is: {size} bytes")
                 file.write(fullContentCipher)
 
         out_hash = hashlib.sha256(fullContent).hexdigest()
-        logging.info("SHA256 of generated binary: {}".format(out_hash))
+        logging.info(f"SHA256 of generated binary: {out_hash}")
 
 
 def main():

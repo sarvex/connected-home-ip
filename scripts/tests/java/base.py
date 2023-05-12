@@ -32,7 +32,7 @@ from colorama import Fore, Style
 def EnqueueLogOutput(fp, tag, q):
     for line in iter(fp.readline, b''):
         timestamp = time.time()
-        if len(line) > len('[1646290606.901990]') and line[0:1] == b'[':
+        if len(line) > len('[1646290606.901990]') and line[:1] == b'[':
             try:
                 timestamp = float(line[1:18].decode())
                 line = line[19:]

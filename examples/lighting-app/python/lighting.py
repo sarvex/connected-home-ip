@@ -103,14 +103,15 @@ class LightingMgrCmd(Cmd):
         cmd, arg, line = Cmd.parseline(self, line)
         if cmd:
             cmd = self.shortCommandName(cmd)
-            line = cmd + " " + arg
+            line = f"{cmd} {arg}"
         return cmd, arg, line
 
     def completenames(self, text, *ignored):
         return [
-            name + " "
+            f"{name} "
             for name in LightingMgrCmd.command_names
-            if name.startswith(text) or self.shortCommandName(name).startswith(text)
+            if name.startswith(text)
+            or self.shortCommandName(name).startswith(text)
         ]
 
     def shortCommandName(self, cmd):
@@ -118,7 +119,7 @@ class LightingMgrCmd(Cmd):
 
     def precmd(self, line):
         if not self.use_rawinput and line != "EOF" and line != "":
-            print(">>> " + line)
+            print(f">>> {line}")
         return line
 
     def postcmd(self, stop, line):
@@ -146,7 +147,7 @@ class LightingMgrCmd(Cmd):
         if line:
             cmd, arg, unused = self.parseline(line)
             try:
-                doc = getattr(self, "do_" + cmd).__doc__
+                doc = getattr(self, f"do_{cmd}").__doc__
             except AttributeError:
                 doc = None
             if doc:
@@ -178,12 +179,11 @@ def attributeChangeCallback(
                 # print("[PY] light on")
                 future = asyncio.run_coroutine_threadsafe(
                     dali_on(True), dali_loop)
-                future.result()
             else:
                 # print("[PY] light off")
                 future = asyncio.run_coroutine_threadsafe(
                     dali_on(False), dali_loop)
-                future.result()
+            future.result()
         elif clusterId == 8 and attributeId == 0:
             if len(value) == 2:
                 # print("[PY] level {}".format(value[0]))
@@ -192,12 +192,8 @@ def attributeChangeCallback(
                 future.result()
             else:
                 print("[PY] no level")
-        else:
-            # print("[PY] [ERR] unhandled cluster {} or attribute {}".format(
-            #     clusterId, attributeId))
-            pass
     else:
-        print("[PY] [ERR] unhandled endpoint {} ".format(endpoint))
+        print(f"[PY] [ERR] unhandled endpoint {endpoint} ")
 
 
 class Lighting:
@@ -213,9 +209,8 @@ if __name__ == "__main__":
     print()
 
     print("Starting DALI async")
-    threads = []
     t = threading.Thread(target=daliworker)
-    threads.append(t)
+    threads = [t]
     t.start()
 
     try:

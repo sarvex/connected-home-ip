@@ -109,9 +109,7 @@ class TestStepInvalidTypeError(TestStepError):
 
     def __init__(self, content, key, expected_type):
         if isinstance(expected_type, tuple):
-            expected_name = ''
-            for _type in expected_type:
-                expected_name += _type.__name__ + ','
+            expected_name = ''.join(f'{_type.__name__},' for _type in expected_type)
             expected_name = expected_name[:-1]
         else:
             expected_name = expected_type.__name__

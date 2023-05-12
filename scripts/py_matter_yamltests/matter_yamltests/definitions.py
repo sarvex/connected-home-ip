@@ -143,20 +143,16 @@ class SpecDefinitions:
         return self.__get_by_name(cluster_name, struct_name, _ItemType.Struct)
 
     def get_type_by_name(self, cluster_name: str, target_name: str):
-        bitmap = self.get_bitmap_by_name(cluster_name, target_name)
-        if bitmap:
+        if bitmap := self.get_bitmap_by_name(cluster_name, target_name):
             return bitmap
 
-        enum = self.get_enum_by_name(cluster_name, target_name)
-        if enum:
+        if enum := self.get_enum_by_name(cluster_name, target_name):
             return enum
 
-        struct = self.get_struct_by_name(cluster_name, target_name)
-        if struct:
+        if struct := self.get_struct_by_name(cluster_name, target_name):
             return struct
 
-        event = self.get_event_by_name(cluster_name, target_name)
-        if event:
+        if event := self.get_event_by_name(cluster_name, target_name):
             return event
 
         return None
@@ -164,17 +160,17 @@ class SpecDefinitions:
     def get_command_names(self, cluster_name: str) -> list[str]:
         targets = self.__get_targets_by_cluster_name(
             cluster_name, _ItemType.Request)
-        return [] if targets is None else [name for name in targets]
+        return [] if targets is None else list(targets)
 
     def get_event_names(self, cluster_name: str) -> list[str]:
         targets = self.__get_targets_by_cluster_name(
             cluster_name, _ItemType.Event)
-        return [] if targets is None else [name for name in targets]
+        return [] if targets is None else list(targets)
 
     def get_attribute_names(self, cluster_name: str) -> list[str]:
         targets = self.__get_targets_by_cluster_name(
             cluster_name, _ItemType.Attribute)
-        return [] if targets is None else [name for name in targets]
+        return [] if targets is None else list(targets)
 
     def is_fabric_scoped(self, target) -> bool:
         if isinstance(target, Event):
@@ -234,10 +230,7 @@ class SpecDefinitions:
         }
 
         targets = target_mapping[target_type].get(cluster_id)
-        if targets is None:
-            return None
-
-        return targets.get(target_id)
+        return None if targets is None else targets.get(target_id)
 
     def __get_targets_by_cluster_name(self, cluster_name: str, target_type: _ItemType):
         if not cluster_name:

@@ -148,7 +148,7 @@ class Efr32Builder(GnBuilder):
             root=app.BuildRoot(root),
             runner=runner)
         self.app = app
-        self.extra_gn_options = ['silabs_board="%s"' % board.GnArgName()]
+        self.extra_gn_options = [f'silabs_board="{board.GnArgName()}"']
         self.dotfile = ''
 
         if enable_rpcs:
@@ -167,23 +167,23 @@ class Efr32Builder(GnBuilder):
         if chip_build_libshell:
             self.extra_gn_options.append('chip_build_libshell=true')
 
-        if chip_logging is False:
+        if not chip_logging:
             self.extra_gn_options.append('chip_logging=false')
 
-        if chip_openthread_ftd is False:
+        if not chip_openthread_ftd:
             self.extra_gn_options.append('chip_openthread_ftd=false')
 
         if enable_heap_monitoring:
             self.extra_gn_options.append('enable_heap_monitoring=true')
 
-        if enable_openthread_cli is False:
+        if not enable_openthread_cli:
             self.extra_gn_options.append('enable_openthread_cli=false')
 
         if show_qr_code:
             self.extra_gn_options.append('show_qr_code=true')
 
         if enable_wifi:
-            self.dotfile += self.root + '/build_for_wifi_gnfile.gn'
+            self.dotfile += f'{self.root}/build_for_wifi_gnfile.gn'
             if board == Efr32Board.BRD4161A:
                 self.extra_gn_options.append('is_debug=false chip_logging=false')
             else:
@@ -216,7 +216,8 @@ class Efr32Builder(GnBuilder):
                 ['git', 'describe', '--always', '--dirty', '--exclude', '*']).decode('ascii').strip()
             branchName = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('ascii').strip()
             self.extra_gn_options.append(
-                'sl_matter_version_str="v1.0-%s-%s"' % (branchName, shortCommitSha))
+                f'sl_matter_version_str="v1.0-{branchName}-{shortCommitSha}"'
+            )
 
         if "GSDK_ROOT" in os.environ:
             # EFR32 SDK is very large. If the SDK path is already known (the
@@ -231,7 +232,7 @@ class Efr32Builder(GnBuilder):
     def build_outputs(self):
         items = {}
         for extension in ["out", "out.map", "hex"]:
-            name = '%s.%s' % (self.app.AppNamePrefix(), extension)
+            name = f'{self.app.AppNamePrefix()}.{extension}'
             items[name] = os.path.join(self.output_dir, name)
 
         if self.app == Efr32App.UNIT_TEST:
@@ -243,39 +244,41 @@ class Efr32Builder(GnBuilder):
 
         # Figure out flash bundle files and build accordingly
         with open(os.path.join(self.output_dir, self.app.FlashBundleName())) as f:
-            for line in f.readlines():
+            for line in f:
                 name = line.strip()
-                items['flashbundle/%s' %
-                      name] = os.path.join(self.output_dir, name)
+                items[f'flashbundle/{name}'] = os.path.join(self.output_dir, name)
 
         return items
 
     def generate(self):
         cmd = [
-            'gn', 'gen', '--check', '--fail-on-unused-args',
+            'gn',
+            'gen',
+            '--check',
+            '--fail-on-unused-args',
             '--export-compile-commands',
-            '--root=%s' % self.root
+            f'--root={self.root}',
         ]
         if self.dotfile:
-            cmd += ['--dotfile=%s' % self.dotfile]
+            cmd += [f'--dotfile={self.dotfile}']
 
         extra_args = self.GnBuildArgs()
 
         if self.options.pw_command_launcher:
-            extra_args.append('pw_command_launcher="%s"' % self.options.pw_command_launcher)
+            extra_args.append(f'pw_command_launcher="{self.options.pw_command_launcher}"')
 
         if self.options.pregen_dir:
-            extra_args.append('chip_code_pre_generated_directory="%s"' % self.options.pregen_dir)
+            extra_args.append(
+                f'chip_code_pre_generated_directory="{self.options.pregen_dir}"'
+            )
 
         if extra_args:
-            cmd += ['--args=%s' % ' '.join(extra_args)]
+            cmd += [f"--args={' '.join(extra_args)}"]
 
         cmd += [self.output_dir]
 
-        title = 'Generating ' + self.identifier
-        extra_env = self.GnBuildEnv()
-
-        if extra_env:
+        title = f'Generating {self.identifier}'
+        if extra_env := self.GnBuildEnv():
             # convert the command into a bash command that includes
             # setting environment variables
             cmd = [

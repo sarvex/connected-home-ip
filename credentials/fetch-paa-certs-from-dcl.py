@@ -68,10 +68,7 @@ def parse_paa_root_certs(cmdpipe, paa_list):
     result = {}
 
     while True:
-        line = cmdpipe.stdout.readline()
-        if not line:
-            break
-        else:
+        if line := cmdpipe.stdout.readline():
             if b': ' in line:
                 key, value = line.split(b': ')
                 result[key.strip(b' -').decode("utf-8")] = value.strip().decode("utf-8")
@@ -79,16 +76,19 @@ def parse_paa_root_certs(cmdpipe, paa_list):
                 if parse_paa_root_certs.counter % 2 == 0:
                     paa_list.append(copy.deepcopy(result))
 
+        else:
+            break
+
 
 def write_paa_root_cert(certificate, subject):
     filename = 'dcld_mirror_' + \
         re.sub('[^a-zA-Z0-9_-]', '', re.sub('[=, ]', '_', subject))
-    with open(filename + '.pem', 'w+') as outfile:
+    with open(f'{filename}.pem', 'w+') as outfile:
         outfile.write(certificate)
     # convert pem file to der
-    with open(filename + '.pem', 'rb') as infile:
+    with open(f'{filename}.pem', 'rb') as infile:
         pem_certificate = x509.load_pem_x509_certificate(infile.read())
-    with open(filename + '.der', 'wb+') as outfile:
+    with open(f'{filename}.der', 'wb+') as outfile:
         der_certificate = pem_certificate.public_bytes(
             serialization.Encoding.DER)
         outfile.write(der_certificate)
@@ -99,19 +99,17 @@ def parse_paa_root_cert_from_dcld(cmdpipe):
     certificate = ""
 
     while True:
-        line = cmdpipe.stdout.readline()
-        if not line:
+        if not (line := cmdpipe.stdout.readline()):
             break
-        else:
-            if b'pemCert: |' in line:
-                while True:
-                    line = cmdpipe.stdout.readline()
-                    certificate += line.strip(b' \t').decode("utf-8")
-                    if b'-----END CERTIFICATE-----' in line:
-                        break
-            if b'subjectAsText:' in line:
-                subject = line.split(b': ')[1].strip().decode("utf-8")
-                break
+        if b'pemCert: |' in line:
+            while True:
+                line = cmdpipe.stdout.readline()
+                certificate += line.strip(b' \t').decode("utf-8")
+                if b'-----END CERTIFICATE-----' in line:
+                    break
+        if b'subjectAsText:' in line:
+            subject = line.split(b': ')[1].strip().decode("utf-8")
+            break
 
     return (certificate, subject)
 

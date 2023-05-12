@@ -86,7 +86,7 @@ class InfineonBuilder(GnBuilder):
             runner=runner)
 
         self.app = app
-        self.extra_gn_options = ['psoc6_board="%s"' % board.GnArgName()]
+        self.extra_gn_options = [f'psoc6_board="{board.GnArgName()}"']
 
         if enable_ota_requestor:
             self.extra_gn_options.append('chip_enable_ota_requestor=true')
@@ -97,16 +97,14 @@ class InfineonBuilder(GnBuilder):
         return self.extra_gn_options
 
     def build_outputs(self):
-        items = {
-            '%s.out' % self.app.AppNamePrefix():
-                os.path.join(self.output_dir, '%s.out' %
-                             self.app.AppNamePrefix()),
-            '%s.out.map' % self.app.AppNamePrefix():
-                os.path.join(self.output_dir,
-                             '%s.out.map' % self.app.AppNamePrefix()),
+        return {
+            f'{self.app.AppNamePrefix()}.out': os.path.join(
+                self.output_dir, f'{self.app.AppNamePrefix()}.out'
+            ),
+            f'{self.app.AppNamePrefix()}.out.map': os.path.join(
+                self.output_dir, f'{self.app.AppNamePrefix()}.out.map'
+            ),
         }
-
-        return items
 
     def flashbundle(self):
         with open(os.path.join(self.output_dir, self.app.FlashBundleName()), 'r') as fp:

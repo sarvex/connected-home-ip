@@ -125,7 +125,7 @@ def version_update(log_level, update, new_version):
         found_versions = set()
         for m in ZAP_VERSION_RE.finditer(file_data):
             version = file_data[m.start():m.end()]
-            if not version in found_versions:
+            if version not in found_versions:
                 logging.info('%s currently used in %s', version, name)
                 found_versions.add(version)
 
@@ -133,8 +133,7 @@ def version_update(log_level, update, new_version):
         if new_version:
             search_pos = 0
             need_replace = False
-            m = ZAP_VERSION_RE.search(file_data, search_pos)
-            while m:
+            while m := ZAP_VERSION_RE.search(file_data, search_pos):
                 version = file_data[m.start():m.end()]
                 if version == new_version:
                     logging.warning(
@@ -144,8 +143,6 @@ def version_update(log_level, update, new_version):
                     new_version + file_data[m.end():]
                 need_replace = True
                 search_pos = m.end()  # generally ok since our versions are fixed length
-                m = ZAP_VERSION_RE.search(file_data, search_pos)
-
             if need_replace:
                 logging.info('Replacing with version %s in %s',
                              new_version, name)

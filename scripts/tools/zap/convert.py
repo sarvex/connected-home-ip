@@ -36,13 +36,13 @@ def checkPythonVersion():
 
 def checkFileExists(path):
     if not os.path.isfile(path):
-        print('Error: ' + path + ' does not exists or is not a file.')
+        print(f'Error: {path} does not exists or is not a file.')
         exit(1)
 
 
 def checkDirExists(path):
     if not os.path.isdir(path):
-        print('Error: ' + path + ' does not exists or is not a directory.')
+        print(f'Error: {path} does not exists or is not a directory.')
         exit(1)
 
 

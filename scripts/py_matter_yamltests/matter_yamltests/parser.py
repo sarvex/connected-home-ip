@@ -331,10 +331,7 @@ class _TestStepWithPlaceholders:
             if key in known_keys_to_copy:
                 value[key] = item
                 del container[key]
-            elif key in known_keys_to_allow:
-                # Nothing to do for those keys.
-                pass
-            else:
+            elif key not in known_keys_to_allow:
                 raise TestStepKeyError(item, key)
 
         container['values'] = [value]
@@ -376,8 +373,7 @@ class _TestStepWithPlaceholders:
                 else:
                     target_key = value['name']
                     if mapping_type.get(target_key) is None:
-                        raise TestStepValueNameError(
-                            value, target_key, [key for key in mapping_type])
+                        raise TestStepValueNameError(value, target_key, list(mapping_type))
                     mapping = mapping_type[target_key]
 
                 if key == 'value':
@@ -392,9 +388,6 @@ class _TestStepWithPlaceholders:
                         if is_typed_constraint(constraint):
                             value[key][constraint] = self._update_value_with_definition(
                                 constraint_value, mapping_type)
-                else:
-                    # This key, value pair does not rely on cluster specifications.
-                    pass
 
     def _update_value_with_definition(self, value, mapping_type):
         if not mapping_type:
@@ -406,7 +399,7 @@ class _TestStepWithPlaceholders:
                 # FabricIndex is a special case where the framework requires it to be passed even
                 # if it is not part of the requested arguments per spec and not part of the XML
                 # definition.
-                if key == 'FabricIndex' or key == 'fabricIndex':
+                if key in ['FabricIndex', 'fabricIndex']:
                     rv[key] = value[key]  # int64u
                 else:
                     if not mapping_type.get(key):
@@ -421,16 +414,16 @@ class _TestStepWithPlaceholders:
         # example let's say value = 'foo + 1' and map type is 'int64u', we would arguably do
         # the wrong thing below.
         if value is not None and value not in self._parsing_config_variable_storage:
-            if mapping_type == 'int64u' or mapping_type == 'int64s' or mapping_type == 'bitmap64' or mapping_type == 'epoch_us':
+            if mapping_type in ['int64u', 'int64s', 'bitmap64', 'epoch_us']:
                 value = fixes.try_apply_float_to_integer_fix(value)
                 value = fixes.try_apply_yaml_cpp_longlong_limitation_fix(value)
                 value = fixes.try_apply_yaml_unrepresentable_integer_for_javascript_fixes(
                     value)
-            elif mapping_type == 'single' or mapping_type == 'double':
+            elif mapping_type in ['single', 'double']:
                 value = fixes.try_apply_yaml_float_written_as_strings(value)
-            elif isinstance(value, float) and mapping_type != 'single' and mapping_type != 'double':
+            elif isinstance(value, float):
                 value = fixes.try_apply_float_to_integer_fix(value)
-            elif mapping_type == 'octet_string' or mapping_type == 'long_octet_string':
+            elif mapping_type in ['octet_string', 'long_octet_string']:
                 value = fixes.convert_yaml_octet_string_to_bytes(value)
             elif mapping_type == 'boolean':
                 value = bool(value)
@@ -625,7 +618,6 @@ class TestStep:
            and validate that the response type (e.g readAttribute/writeAttribute/...) matches
            the expectation from the test step."""
         check_type = PostProcessCheckType.WAIT_VALIDATION
-        error_success = 'The test expectation "{wait_for}" for "{cluster}.{wait_type}" on endpoint {endpoint} is true'
         error_failure = 'The test expectation "{expected} == {received}" is false'
         error_failure_multiple_responses = 'The test expects a single response but got {len(received_responses)} responses.'
 
@@ -669,13 +661,12 @@ class TestStep:
                 success = False
 
         if success:
+            error_success = 'The test expectation "{wait_for}" for "{cluster}.{wait_type}" on endpoint {endpoint} is true'
             result.success(check_type, error_success.format(
                 wait_for=self.wait_for, cluster=self.cluster, wait_type=expected_wait_type, endpoint=self.endpoint))
 
     def _response_error_validation(self, expected_response, received_response, result):
         check_type = PostProcessCheckType.IM_STATUS
-        error_success = 'The test expects the "{error}" error which occured successfully.'
-        error_success_no_error = 'The test expects no error and no error occurred.'
         error_wrong_error = 'The test expects the "{error}" error but the "{value}" error occured.'
         error_unexpected_error = 'The test expects no error but the "{error}" error occured.'
         error_unexpected_success = 'The test expects the "{error}" error but no error occured.'
@@ -685,45 +676,41 @@ class TestStep:
         received_error = received_response.get('error')
 
         if expected_error and received_error and expected_error == received_error:
+            error_success = 'The test expects the "{error}" error which occured successfully.'
             result.success(check_type, error_success.format(
                 error=expected_error))
         elif expected_error and received_error:
             result.error(check_type, error_wrong_error.format(
                 error=expected_error, value=received_error))
-        elif expected_error and not received_error:
+        elif expected_error:
             result.error(check_type, error_unexpected_success.format(
                 error=expected_error))
-        elif not expected_error and received_error:
+        elif received_error:
             result.error(check_type, error_unexpected_error.format(
                 error=received_error))
-        elif not expected_error and not received_error:
-            result.success(check_type, error_success_no_error)
         else:
-            # This should not happens
-            raise AssertionError('This should not happens.')
+            error_success_no_error = 'The test expects no error and no error occurred.'
+            result.success(check_type, error_success_no_error)
 
     def _response_cluster_error_validation(self, expected_response, received_response, result):
         check_type = PostProcessCheckType.CLUSTER_STATUS
-        error_success = 'The test expects the "{error}" error which occured successfully.'
-        error_unexpected_success = 'The test expects the "{error}" error but no error occured.'
-        error_wrong_error = 'The test expects the "{error}" error but the "{value}" error occured.'
-
         expected_error = expected_response.get('clusterError')
         received_error = received_response.get('clusterError')
 
         if expected_error:
+            error_wrong_error = 'The test expects the "{error}" error but the "{value}" error occured.'
+
             if received_error and expected_error == received_error:
+                error_success = 'The test expects the "{error}" error which occured successfully.'
                 result.success(check_type, error_success.format(
                     error=expected_error))
             elif received_error:
                 result.error(check_type, error_wrong_error.format(
                     error=expected_error, value=received_error))
             else:
+                error_unexpected_success = 'The test expects the "{error}" error but no error occured.'
                 result.error(check_type, error_unexpected_success.format(
                     error=expected_error))
-        else:
-            # Nothing is logged here to not be redundant with the generic error checking code.
-            pass
 
     def _response_values_validation(self, expected_response, received_response, result):
         check_type = PostProcessCheckType.RESPONSE_VALIDATION
@@ -868,11 +855,10 @@ class TestStep:
         if type(value) is list:
             return [self._config_variable_substitution(entry) for entry in value]
         elif type(value) is dict:
-            mapped_value = {}
-            for key in value:
-                mapped_value[key] = self._config_variable_substitution(
-                    value[key])
-            return mapped_value
+            return {
+                key: self._config_variable_substitution(value[key])
+                for key in value
+            }
         elif type(value) is str:
             # For most tests, a single config variable is used and it can be replaced as in.
             # But some other tests were relying on the fact that the expression was put 'as if' in
@@ -978,11 +964,11 @@ class TestParser:
 
     def __apply_config_override(self, config, config_override):
         for key, value in config_override.items():
-            if value is None or not key in config:
+            if value is None or key not in config:
                 continue
 
             if type(value) is str:
-                if key == 'timeout' or key == 'endpoint':
+                if key in ['timeout', 'endpoint']:
                     value = int(value)
                 elif key == 'nodeId' and value.startswith('0x'):
                     value = int(value, 16)

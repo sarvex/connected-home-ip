@@ -17,15 +17,12 @@
 import sys
 import xmlrpc.client
 
-IP = '127.0.0.1'
 PORT = 9000
 
-if sys.platform == 'linux':
-    IP = '10.10.10.5'
-
+IP = '10.10.10.5' if sys.platform == 'linux' else '127.0.0.1'
 # Passing in sys.argv[2:] gets rid of the script name and key to the apps register. The remaining
 # values in the list are key-value pairs, e.g. [option1, value1, option2, value2, ...]
-with xmlrpc.client.ServerProxy('http://' + IP + ':' + str(PORT) + '/', allow_none=True) as proxy:
+with xmlrpc.client.ServerProxy(f'http://{IP}:{PORT}/', allow_none=True) as proxy:
     file1 = sys.argv[1]
     file2 = sys.argv[2]
     proxy.compareFiles(file1, file2)

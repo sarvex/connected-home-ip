@@ -70,7 +70,7 @@ class ZapTool:
                 try:
                     m = version_re.match(line.decode('utf-8'))
                     if m:
-                        version = m.group(1)
+                        version = m[1]
                         break
                 except UnicodeDecodeError:
                     # Version line will not be unicode ... skip over odd lines

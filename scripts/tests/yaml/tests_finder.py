@@ -45,8 +45,7 @@ class TestsFinder:
 
         if self.__test_collections and test_name == _KEYWORD_ALL_TESTS:
             for collection_name in self.__test_collections.get('collection'):
-                for name in self.__test_collections.get(collection_name):
-                    test_names.append(name)
+                test_names.extend(iter(self.__test_collections.get(collection_name)))
         elif self.__test_collections and self.__test_collections.get(test_name):
             test_names = self.__test_collections.get(test_name)
         else:

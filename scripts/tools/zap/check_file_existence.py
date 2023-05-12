@@ -28,9 +28,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.touch:
-        if os.path.exists(args.touch):
-            os.remove(args.touch)
+    if args.touch and os.path.exists(args.touch):
+        os.remove(args.touch)
 
     for name in args.exists:
         if not os.path.exists(name):

@@ -97,9 +97,7 @@ class ParseSource:
 
     @ property
     def source_file_name(self):
-        if self.name:
-            return self.name
-        return self.source  # assume string
+        return self.name if self.name else self.source
 
 
 def ParseXmls(sources: List[ParseSource], include_meta_data=True) -> Idl:
@@ -112,7 +110,7 @@ def ParseXmls(sources: List[ParseSource], include_meta_data=True) -> Idl:
     handler = ParseHandler(include_meta_data=include_meta_data)
 
     for source in sources:
-        logging.info('Parsing %s...' % source.source_file_name)
+        logging.info(f'Parsing {source.source_file_name}...')
         handler.PrepareParsing(source.source_file_name)
 
         parser = xml.sax.make_parser()

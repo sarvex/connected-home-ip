@@ -55,29 +55,32 @@ class GnBuilder(Builder):
 
     def generate(self):
         cmd = [
-            'gn', 'gen', '--check', '--fail-on-unused-args',
+            'gn',
+            'gen',
+            '--check',
+            '--fail-on-unused-args',
             '--export-compile-commands',
-            '--root=%s' % self.root
+            f'--root={self.root}',
         ]
 
         extra_args = []
 
         if self.options.pw_command_launcher:
-            extra_args.append('pw_command_launcher="%s"' % self.options.pw_command_launcher)
+            extra_args.append(f'pw_command_launcher="{self.options.pw_command_launcher}"')
 
         if self.options.pregen_dir:
-            extra_args.append('chip_code_pre_generated_directory="%s"' % self.options.pregen_dir)
+            extra_args.append(
+                f'chip_code_pre_generated_directory="{self.options.pregen_dir}"'
+            )
 
         extra_args.extend(self.GnBuildArgs() or [])
         if extra_args:
-            cmd += ['--args=%s' % ' '.join(extra_args)]
+            cmd += [f"--args={' '.join(extra_args)}"]
 
         cmd += [self.output_dir]
 
-        title = 'Generating ' + self.identifier
-        extra_env = self.GnBuildEnv()
-
-        if extra_env:
+        title = f'Generating {self.identifier}'
+        if extra_env := self.GnBuildEnv():
             # convert the command into a bash command that includes
             # setting environment variables
             cmd = [
@@ -96,8 +99,7 @@ class GnBuilder(Builder):
         if self.build_command:
             cmd.append(self.build_command)
 
-        extra_env = self.GnBuildEnv()
-        if extra_env:
+        if extra_env := self.GnBuildEnv():
             # convert the command into a bash command that includes
             # setting environment variables
             cmd = [
@@ -107,6 +109,6 @@ class GnBuilder(Builder):
                 )
             ]
 
-        self._Execute(cmd, title='Building ' + self.identifier)
+        self._Execute(cmd, title=f'Building {self.identifier}')
 
         self.PostBuildCommand()

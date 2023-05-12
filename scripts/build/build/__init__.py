@@ -35,9 +35,13 @@ class Context:
         for target in targets:
             found = False
             for choice in BUILD_TARGETS:
-                builder = choice.Create(target, self.runner, self.repository_path,
-                                        self.output_prefix, options)
-                if builder:
+                if builder := choice.Create(
+                    target,
+                    self.runner,
+                    self.repository_path,
+                    self.output_prefix,
+                    options,
+                ):
                     self.builders.append(builder)
                     found = True
 

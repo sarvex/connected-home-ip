@@ -60,7 +60,7 @@ class InstalledScriptInfo:
 
 
 class BinaryDistribution(Distribution):
-    def has_ext_modules(foo):
+    def has_ext_modules(self):
         return True
 
 
@@ -117,8 +117,8 @@ try:
     #
     packages = manifest['packages']
 
-    print("packageName: {}".format(packageName))
-    print("libName: {}".format(libName))
+    print(f"packageName: {packageName}")
+    print(f"libName: {libName}")
 
     # Invoke the setuptools 'bdist_wheel' command to generate a wheel containing
     # the CHIP python packages, shared libraries and scripts.
@@ -141,15 +141,13 @@ try:
             # By default, look in the tmp directory for packages/modules to be included.
             '': tmpDir,
         },
-        package_data={
-            packages[0]: [
-                libName
-            ]
-        } if libName else {},
-        scripts=[name for name in map(
-            lambda script: os.path.join(tmpDir, script.installName),
-            installScripts
-        )],
+        package_data={packages[0]: [libName]} if libName else {},
+        scripts=list(
+            map(
+                lambda script: os.path.join(tmpDir, script.installName),
+                installScripts,
+            )
+        ),
         install_requires=requiredPackages,
         options={
             'bdist_wheel': {
@@ -162,10 +160,10 @@ try:
             'egg_info': {
                 # Place the .egg-info subdirectory in the tmp directory.
                 'egg_base': tmpDir
-            }
+            },
         },
         distclass=BinaryDistribution if libName else None,
-        script_args=['clean', '--all', 'bdist_wheel']
+        script_args=['clean', '--all', 'bdist_wheel'],
     )
 
 finally:

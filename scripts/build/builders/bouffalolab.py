@@ -31,7 +31,7 @@ class BouffalolabApp(Enum):
 
     def AppNamePrefix(self, chip_name):
         if self == BouffalolabApp.LIGHT:
-            return ('chip-%s-lighting-example' % chip_name)
+            return f'chip-{chip_name}-lighting-example'
         else:
             raise Exception('Unknown app type: %r' % self)
 
@@ -92,22 +92,21 @@ class BouffalolabBuilder(GnBuilder):
         self.chip_name = bouffalo_chip
 
         toolchain = os.path.join(root, os.path.split(os.path.realpath(__file__))[0], '../../../config/bouffalolab/toolchain')
-        toolchain = 'custom_toolchain="{}:riscv_gcc"'.format(toolchain)
-        if toolchain:
+        if toolchain := f'custom_toolchain="{toolchain}:riscv_gcc"':
             self.argsOpt.append(toolchain)
 
         self.app = app
         self.board = board
 
-        self.argsOpt.append('board=\"{}\"'.format(self.board.GnArgName()))
-        self.argsOpt.append('baudrate=\"{}\"'.format(baudrate))
+        self.argsOpt.append(f'board=\"{self.board.GnArgName()}\"')
+        self.argsOpt.append(f'baudrate=\"{baudrate}\"')
 
         if bouffalo_chip == "bl702":
-            self.argsOpt.append('module_type=\"{}\"'.format(module_type))
+            self.argsOpt.append(f'module_type=\"{module_type}\"')
 
         if enable_cdc:
             if bouffalo_chip != "bl702":
-                raise Exception('Chip %s does NOT support USB CDC' % bouffalo_chip)
+                raise Exception(f'Chip {bouffalo_chip} does NOT support USB CDC')
             self.argsOpt.append('enable_cdc_module=true')
 
         if enable_rpcs:
@@ -116,7 +115,9 @@ class BouffalolabBuilder(GnBuilder):
             self.argsOpt.append('chip_build_libshell=true')
 
         try:
-            self.argsOpt.append('bouffalolab_sdk_root="%s"' % os.environ['BOUFFALOLAB_SDK_ROOT'])
+            self.argsOpt.append(
+                f"""bouffalolab_sdk_root="{os.environ['BOUFFALOLAB_SDK_ROOT']}\""""
+            )
         except KeyError as err:
             logging.fatal('Please make sure Bouffalo Lab SDK installs as below:')
             logging.fatal('\tcd third_party/bouffalolab/repo')
@@ -131,13 +132,12 @@ class BouffalolabBuilder(GnBuilder):
         return self.argsOpt
 
     def build_outputs(self):
-        items = {
-            '%s.out' % self.app.AppNamePrefix(self.chip_name):
-                os.path.join(self.output_dir, '%s.out' %
-                             self.app.AppNamePrefix(self.chip_name)),
-            '%s.out.map' % self.app.AppNamePrefix(self.chip_name):
-                os.path.join(self.output_dir,
-                             '%s.out.map' % self.app.AppNamePrefix(self.chip_name)),
+        return {
+            f'{self.app.AppNamePrefix(self.chip_name)}.out': os.path.join(
+                self.output_dir, f'{self.app.AppNamePrefix(self.chip_name)}.out'
+            ),
+            f'{self.app.AppNamePrefix(self.chip_name)}.out.map': os.path.join(
+                self.output_dir,
+                f'{self.app.AppNamePrefix(self.chip_name)}.out.map',
+            ),
         }
-
-        return items

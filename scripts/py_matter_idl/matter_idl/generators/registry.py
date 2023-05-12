@@ -59,7 +59,7 @@ class CodeGenerator(enum.Enum):
         if name.lower() in GENERATORS:
             return GENERATORS[name.lower()]
         else:
-            raise NameError("Unknown code generator type '%s'" % name)
+            raise NameError(f"Unknown code generator type '{name}'")
 
 
 # Contains all known code generators along with a string

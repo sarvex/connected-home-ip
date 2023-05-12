@@ -58,21 +58,18 @@ def checkPythonVersion():
 
 def checkFileExists(path):
     if not os.path.isfile(path):
-        print('Error: ' + path + ' does not exists or is not a file.')
+        print(f'Error: {path} does not exists or is not a file.')
         exit(1)
 
 
 def checkDirExists(path):
     if not os.path.isdir(path):
-        print('Error: ' + path + ' does not exists or is not a directory.')
+        print(f'Error: {path} does not exists or is not a directory.')
         exit(1)
 
 
 def getFilePath(name, prefix_chip_root_dir=True):
-    if prefix_chip_root_dir:
-        fullpath = os.path.join(CHIP_ROOT_DIR, name)
-    else:
-        fullpath = name
+    fullpath = os.path.join(CHIP_ROOT_DIR, name) if prefix_chip_root_dir else name
     checkFileExists(fullpath)
     return fullpath
 
@@ -118,8 +115,12 @@ def runArgumentsParser() -> CmdLineArgs:
     parser = argparse.ArgumentParser(
         description='Generate artifacts from .zapt templates')
     parser.add_argument('zap', help='Path to the application .zap file')
-    parser.add_argument('-t', '--templates', default=default_templates,
-                        help='Path to the .zapt templates records to use for generating artifacts (default: "' + default_templates + '")')
+    parser.add_argument(
+        '-t',
+        '--templates',
+        default=default_templates,
+        help=f'Path to the .zapt templates records to use for generating artifacts (default: "{default_templates}")',
+    )
     parser.add_argument('-z', '--zcl',
                         help='Path to the zcl templates records to use for generating artifacts (default: autodetect read from zap file)')
     parser.add_argument('-o', '--output-dir', default=None,
@@ -155,11 +156,7 @@ def runArgumentsParser() -> CmdLineArgs:
 
     zap_file = getFilePath(args.zap)
 
-    if args.zcl:
-        zcl_file = getFilePath(args.zcl)
-    else:
-        zcl_file = detectZclFile(zap_file)
-
+    zcl_file = getFilePath(args.zcl) if args.zcl else detectZclFile(zap_file)
     templates_file = getFilePath(args.templates)
     output_dir = getDirPath(output_dir)
 
@@ -187,7 +184,7 @@ def extractGeneratedIdl(output_dir, zap_config_path):
     if not target_path.endswith(".matter"):
         # We expect "something.zap" and don't handle corner cases of
         # multiple extensions. This is to work with existing codebase only
-        raise Error("Unexpected input zap file  %s" % self.zap_config)
+        raise Error(f"Unexpected input zap file  {self.zap_config}")
 
     shutil.move(idl_path, target_path)
 
@@ -224,10 +221,13 @@ def runClangPrettifier(templates_file, output_dir):
         jsonData = json.loads(Path(templates_file).read_text())
         outputs = [(os.path.join(output_dir, template['output']))
                    for template in jsonData['templates']]
-        clangOutputs = list(filter(lambda filepath: os.path.splitext(
-            filepath)[1] in listOfSupportedFileExtensions, outputs))
-
-        if len(clangOutputs) > 0:
+        if clangOutputs := list(
+            filter(
+                lambda filepath: os.path.splitext(filepath)[1]
+                in listOfSupportedFileExtensions,
+                outputs,
+            )
+        ):
             # NOTE: clang-format may differ in time. Currently pigweed comes
             #       with clang-format 15. CI may have clang-format-10 installed
             #       on linux.
@@ -236,14 +236,15 @@ def runClangPrettifier(templates_file, output_dir):
             #       at this point attempt to use clang-format 15.
             clang_formats = ['clang-format-15', 'clang-format']
             for clang_format in clang_formats:
-                args = [clang_format, '-i']
-                args.extend(clangOutputs)
+                args = [clang_format, '-i', *clangOutputs]
                 try:
                     subprocess.check_call(args)
                     err = None
-                    print('Formatted using %s (%s)' % (clang_format, subprocess.check_output([clang_format, '--version'])))
+                    print(
+                        f"Formatted using {clang_format} ({subprocess.check_output([clang_format, '--version'])})"
+                    )
                     for outputName in clangOutputs:
-                        print('  - %s' % outputName)
+                        print(f'  - {outputName}')
                     break
                 except Exception as thrown:
                     err = thrown
@@ -259,23 +260,25 @@ def runJavaPrettifier(templates_file, output_dir):
         jsonData = json.loads(Path(templates_file).read_text())
         outputs = [(os.path.join(output_dir, template['output']))
                    for template in jsonData['templates']]
-        javaOutputs = list(
-            filter(lambda filepath: os.path.splitext(filepath)[1] == ".java", outputs))
-
-        if len(javaOutputs) > 0:
+        if javaOutputs := list(
+            filter(
+                lambda filepath: os.path.splitext(filepath)[1] == ".java",
+                outputs,
+            )
+        ):
             # Keep this version in sync with what restyler uses (https://github.com/project-chip/connectedhomeip/blob/master/.restyled.yaml).
             google_java_format_version = "1.6"
-            google_java_format_url = 'https://github.com/google/google-java-format/releases/download/google-java-format-' + \
-                google_java_format_version + '/'
-            google_java_format_jar = 'google-java-format-' + \
-                google_java_format_version + '-all-deps.jar'
+            google_java_format_url = f'https://github.com/google/google-java-format/releases/download/google-java-format-{google_java_format_version}/'
+            google_java_format_jar = (
+                f'google-java-format-{google_java_format_version}-all-deps.jar'
+            )
             jar_url = google_java_format_url + google_java_format_jar
 
             home = str(Path.home())
             path, http_message = urllib.request.urlretrieve(
-                jar_url, home + '/' + google_java_format_jar)
-            args = ['java', '-jar', path, '--replace']
-            args.extend(javaOutputs)
+                jar_url, f'{home}/{google_java_format_jar}'
+            )
+            args = ['java', '-jar', path, '--replace', *javaOutputs]
             subprocess.check_call(args)
     except Exception as err:
         print('google-java-format error:', err)
@@ -316,7 +319,7 @@ def main():
         # `zap-cli` may extract things into a temporary directory. ensure extraction
         # does not conflict.
         with tempfile.TemporaryDirectory(prefix='zap') as temp_dir:
-            old_temp = os.environ['TEMP'] if 'TEMP' in os.environ else None
+            old_temp = os.environ.get('TEMP', None)
             os.environ['TEMP'] = temp_dir
 
             runGeneration(cmdLineArgs)
@@ -338,7 +341,7 @@ def main():
     if cmdLineArgs.delete_output_dir:
         shutil.rmtree(cmdLineArgs.outputDir)
     else:
-        print("Files generated in: %s" % cmdLineArgs.outputDir)
+        print(f"Files generated in: {cmdLineArgs.outputDir}")
 
 
 if __name__ == '__main__':

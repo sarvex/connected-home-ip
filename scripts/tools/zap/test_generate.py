@@ -100,10 +100,13 @@ class GeneratorTest:
                 # test.outputs contain:
                 #    - file_name
                 #    - golden_path
-                expected_files = set([o.file_name for o in test.outputs])
-                actual_files = set([
-                    name[len(output_directory)+1:] for name in glob.glob(f"{output_directory}/**/*", recursive=True)
-                ])
+                expected_files = {o.file_name for o in test.outputs}
+                actual_files = {
+                    name[len(output_directory) + 1 :]
+                    for name in glob.glob(
+                        f"{output_directory}/**/*", recursive=True
+                    )
+                }
 
                 checker.assertEqual(
                     expected_files, actual_files, msg="Expected and actual generated file list MUST be identical.")
@@ -177,23 +180,21 @@ def process_arguments():
         del args[idx+1]
         del args[idx]
 
-    if '--output' in args:
-        idx = args.index('--output')
-        program_args.output_directory = args[idx + 1]
-        del args[idx+1]
-        del args[idx]
-    else:
+    if '--output' not in args:
         raise Exception("`--output` argument is required")
 
+    idx = args.index('--output')
+    program_args.output_directory = args[idx + 1]
+    del args[idx+1]
+    del args[idx]
     return program_args, args
 
 
 if __name__ == '__main__':
     process_args, unittest_args = process_arguments()
 
-    if process_args.stamp_file:
-        if os.path.exists(process_args.stamp_file):
-            os.remove(process_args.stamp_file)
+    if process_args.stamp_file and os.path.exists(process_args.stamp_file):
+        os.remove(process_args.stamp_file)
 
     PROGRAM_ARGUMENTS = process_args
 

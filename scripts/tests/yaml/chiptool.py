@@ -98,7 +98,7 @@ CONTEXT_SETTINGS['default_map']['chiptool']['use_test_harness_log_format'] = Tru
 
 def maybe_update_server_arguments(ctx):
     if ctx.params['trace_file']:
-        ctx.params['server_arguments'] += ' --trace_file {}'.format(ctx.params['trace_file'])
+        ctx.params['server_arguments'] += f" --trace_file {ctx.params['trace_file']}"
 
     if ctx.params['trace_decode']:
         ctx.params['server_arguments'] += ' --trace_decode 1'

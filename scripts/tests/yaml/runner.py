@@ -188,7 +188,7 @@ class YamlTestParserGroup(click.Group):
             except Exception:
                 pass
             for key, value in custom_options.items():
-                param = click.Option(['--' + key], default=value, show_default=True)
+                param = click.Option([f'--{key}'], default=value, show_default=True)
                 # click converts parameter name to lowercase internally, so we need to override
                 # this behavior in order to override the correct key.
                 param.name = key

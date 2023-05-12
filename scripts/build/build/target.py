@@ -79,19 +79,17 @@ class TargetPart:
         return self
 
     def Accept(self, full_input: str):
-        if self.except_if_re:
-            if self.except_if_re.search(full_input):
-                if report_rejected_parts:
-                    # likely nothing will match when we get such an error
-                    logging.error(f"'{self.name}' does not support '{full_input}' due to rule EXCEPT IF '{self.except_if_re.pattern}'")
-                return False
+        if self.except_if_re and self.except_if_re.search(full_input):
+            if report_rejected_parts:
+                # likely nothing will match when we get such an error
+                logging.error(f"'{self.name}' does not support '{full_input}' due to rule EXCEPT IF '{self.except_if_re.pattern}'")
+            return False
 
-        if self.only_if_re:
-            if not self.only_if_re.search(full_input):
-                if report_rejected_parts:
-                    # likely nothing will match when we get such an error
-                    logging.error(f"'{self.name}' does not support '{full_input}' due to rule ONLY IF '{self.only_if_re.pattern}'")
-                return False
+        if self.only_if_re and not self.only_if_re.search(full_input):
+            if report_rejected_parts:
+                # likely nothing will match when we get such an error
+                logging.error(f"'{self.name}' does not support '{full_input}' due to rule ONLY IF '{self.only_if_re.pattern}'")
+            return False
 
         return True
 
@@ -99,13 +97,10 @@ class TargetPart:
         """Converts a TargetPart into a dictionary
         """
 
-        result: Dict[str, str] = {}
-        result['name'] = self.name
-
-        build_arguments: Dict[str, str] = {}
-        for key, value in self.build_arguments.items():
-            build_arguments[key] = str(value)
-
+        result: Dict[str, str] = {'name': self.name}
+        build_arguments: Dict[str, str] = {
+            key: str(value) for key, value in self.build_arguments.items()
+        }
         result['build_arguments'] = build_arguments
 
         if self.only_if_re is not None:
@@ -138,7 +133,7 @@ def _HasVariantPrefix(value: str, prefix: str):
     if value == prefix:
         return ''
 
-    if value.startswith(prefix + '-'):
+    if value.startswith(f'{prefix}-'):
         return value[len(prefix)+1:]
 
 
@@ -153,13 +148,7 @@ def _StringIntoParts(full_input: str, remaining_input: str, fixed_targets: List[
           modifiers: the modifiers left to match
     """
     if not remaining_input:
-        if fixed_targets:
-            # String was not fully matched. Fixed thargets are required
-            return None
-
-        # Fully parsed
-        return []
-
+        return None if fixed_targets else []
     if fixed_targets:
         # If fixed targets remain, we MUST match one of them
         for target in fixed_targets[0]:
@@ -278,7 +267,7 @@ class BuildTarget:
             if len(fixed) > 1:
                 result += '-{' + ",".join(map(lambda x: x.name, fixed)) + '}'
             else:
-                result += '-' + fixed[0].name
+                result += f'-{fixed[0].name}'
 
         for modifier in self.modifiers:
             result += f"[-{modifier.name}]"
@@ -355,9 +344,7 @@ class BuildTarget:
 
             for n in range(len(self.modifiers) + 1):
                 for c in itertools.combinations(self.modifiers, n):
-                    suffix = ""
-                    for m in c:
-                        suffix += "-" + m.name
+                    suffix = "".join(f"-{m.name}" for m in c)
                     option = f"{self.name}-{prefix}{suffix}"
 
                     if self.StringIntoTargetParts(option) is not None:
@@ -382,11 +369,10 @@ class BuildTarget:
         """Given an input string, process through all the input rules and return
            the underlying list of target parts for the input.
         """
-        suffix = _HasVariantPrefix(value, self.name)
-        if not suffix:
+        if suffix := _HasVariantPrefix(value, self.name):
+            return _StringIntoParts(value, suffix, self.fixed_targets, self.modifiers)
+        else:
             return None
-
-        return _StringIntoParts(value, suffix, self.fixed_targets, self.modifiers)
 
     def Create(self, name: str, runner, repository_path: str, output_prefix: str,
                builder_options: BuilderOptions):
@@ -398,9 +384,9 @@ class BuildTarget:
 
         kargs = {}
         for part in parts:
-            kargs.update(part.build_arguments)
+            kargs |= part.build_arguments
 
-        logging.info("Preparing builder '%s'" % (name,))
+        logging.info(f"Preparing builder '{name}'")
 
         builder = self.builder_class(repository_path, runner=runner, **kargs)
         builder.target = self

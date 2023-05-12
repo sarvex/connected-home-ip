@@ -24,7 +24,7 @@ from collections import namedtuple
 
 CHIP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-ALL_PLATFORMS = set([
+ALL_PLATFORMS = {
     'ameba',
     'android',
     'bl602',
@@ -47,7 +47,7 @@ ALL_PLATFORMS = set([
     'genio',
     'openiotsdk',
     'silabs_docker',
-])
+}
 
 Module = namedtuple('Module', 'name path platforms')
 
@@ -67,9 +67,7 @@ def load_module_info() -> None:
 
 def module_matches_platforms(module: Module, platforms: set) -> bool:
     # If the module is not associated with any specific platform, treat it as a match.
-    if not module.platforms:
-        return True
-    return bool(platforms & module.platforms)
+    return True if not module.platforms else bool(platforms & module.platforms)
 
 
 def module_initialized(module: Module) -> bool:

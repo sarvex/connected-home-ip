@@ -59,22 +59,32 @@ class OpenIotSdkBuilder(Builder):
 
     def generate(self):
         if not os.path.exists(self.output_dir):
-            self._Execute(['cmake', '-GNinja', '-S', shlex.quote(self.ExamplePath), '-B', shlex.quote(self.output_dir),
-                           '--toolchain={}'.format(
-                               shlex.quote(self.toolchain_path)),
-                           '-DCMAKE_SYSTEM_PROCESSOR={}'.format(
-                               self.system_processor),
-                           ], title='Generating ' + self.identifier)
+            self._Execute(
+                [
+                    'cmake',
+                    '-GNinja',
+                    '-S',
+                    shlex.quote(self.ExamplePath),
+                    '-B',
+                    shlex.quote(self.output_dir),
+                    f'--toolchain={shlex.quote(self.toolchain_path)}',
+                    f'-DCMAKE_SYSTEM_PROCESSOR={self.system_processor}',
+                ],
+                title=f'Generating {self.identifier}',
+            )
 
     def _build(self):
-        self._Execute(['cmake', '--build', shlex.quote(self.output_dir)],
-                      title='Building ' + self.identifier)
+        self._Execute(
+            ['cmake', '--build', shlex.quote(self.output_dir)],
+            title=f'Building {self.identifier}',
+        )
 
     def build_outputs(self):
         return {
-            self.app.AppNamePrefix + '.elf':
-                os.path.join(self.output_dir, self.app.AppNamePrefix + '.elf'),
-            self.app.AppNamePrefix + '.map':
-                os.path.join(self.output_dir,
-                             self.app.AppNamePrefix + '.map'),
+            f'{self.app.AppNamePrefix}.elf': os.path.join(
+                self.output_dir, f'{self.app.AppNamePrefix}.elf'
+            ),
+            f'{self.app.AppNamePrefix}.map': os.path.join(
+                self.output_dir, f'{self.app.AppNamePrefix}.map'
+            ),
         }

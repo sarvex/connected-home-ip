@@ -82,10 +82,7 @@ def get_raw_private_key_der(der_file: str, password: str):
             if password is None:
                 log.warning("KEY password has not been provided. It means that DAC key is not encrypted.")
             keys = load_der_private_key(key_data, password, backend=default_backend())
-            private_key = keys.private_numbers().private_value.to_bytes(32, byteorder='big')
-
-            return private_key
-
+            return keys.private_numbers().private_value.to_bytes(32, byteorder='big')
     except IOError or ValueError:
         return None
 
@@ -123,8 +120,8 @@ def gen_test_certs(chip_cert_exe: str,
                      "DAC_KEY": (str)<path to DAC key .der file>]
     """
 
-    CD_PATH = MATTER_ROOT + "/credentials/test/certification-declaration/Chip-Test-CD-Signing-Cert.pem"
-    CD_KEY_PATH = MATTER_ROOT + "/credentials/test/certification-declaration/Chip-Test-CD-Signing-Key.pem"
+    CD_PATH = f"{MATTER_ROOT}/credentials/test/certification-declaration/Chip-Test-CD-Signing-Cert.pem"
+    CD_KEY_PATH = f"{MATTER_ROOT}/credentials/test/certification-declaration/Chip-Test-CD-Signing-Key.pem"
     PAA_PATH = paa_cert_path if paa_cert_path is not None else (MATTER_ROOT +
                                                                 "/credentials/test/attestation/Chip-Test-PAA-NoVID-Cert.pem")
     PAA_KEY_PATH = paa_key_path if paa_key_path is not None else (MATTER_ROOT +
@@ -136,27 +133,42 @@ def gen_test_certs(chip_cert_exe: str,
 
     if generate_cd:
         # generate Certification Declaration
-        cmd = [chip_cert_exe, "gen-cd",
-               "--key", CD_KEY_PATH,
-               "--cert", CD_PATH,
-               "--out", output + "/CD.der",
-               "--format-version",  "1",
-               "--vendor-id",  hex(vendor_id),
-               "--product-id",  hex(product_id),
-               "--device-type-id", "0",
-               "--certificate-id", "FFFFFFFFFFFFFFFFFFF",
-               "--security-level",  "0",
-               "--security-info",  "0",
-               "--certification-type",  str(cd_type),
-               "--version-number", "0xFFFF",
-               ]
+        cmd = [
+            chip_cert_exe,
+            "gen-cd",
+            "--key",
+            CD_KEY_PATH,
+            "--cert",
+            CD_PATH,
+            "--out",
+            f"{output}/CD.der",
+            "--format-version",
+            "1",
+            "--vendor-id",
+            hex(vendor_id),
+            "--product-id",
+            hex(product_id),
+            "--device-type-id",
+            "0",
+            "--certificate-id",
+            "FFFFFFFFFFFFFFFFFFF",
+            "--security-level",
+            "0",
+            "--security-info",
+            "0",
+            "--certification-type",
+            str(cd_type),
+            "--version-number",
+            "0xFFFF",
+        ]
         subprocess.run(cmd)
 
-    new_certificates = {"PAI_CERT": output + "/PAI_cert",
-                        "PAI_KEY": output + "/PAI_key",
-                        "DAC_CERT": output + "/DAC_cert",
-                        "DAC_KEY": output + "/DAC_key"
-                        }
+    new_certificates = {
+        "PAI_CERT": f"{output}/PAI_cert",
+        "PAI_KEY": f"{output}/PAI_key",
+        "DAC_CERT": f"{output}/DAC_cert",
+        "DAC_KEY": f"{output}/DAC_key",
+    }
 
     # generate PAI
     cmd = [chip_cert_exe, "gen-att-cert",
@@ -188,12 +200,14 @@ def gen_test_certs(chip_cert_exe: str,
     # convert to .der files
     for cert_k, cert_v in new_certificates.items():
         action_type = "convert-cert" if cert_k.find("CERT") != -1 else "convert-key"
-        log.info(cert_v + ".der")
-        cmd = [chip_cert_exe, action_type,
-               cert_v + ".pem",
-               cert_v + ".der",
-               "--x509-der",
-               ]
+        log.info(f"{cert_v}.der")
+        cmd = [
+            chip_cert_exe,
+            action_type,
+            f"{cert_v}.pem",
+            f"{cert_v}.der",
+            "--x509-der",
+        ]
         subprocess.run(cmd)
 
     return attestation_certs(new_certificates["DAC_CERT"] + ".der",
@@ -213,8 +227,8 @@ class FactoryDataGenerator:
             arguments (any):All input arguments parsed using ArgParse
         """
         self._args = arguments
-        self._factory_data = list()
-        self._user_data = dict()
+        self._factory_data = []
+        self._user_data = {}
 
         try:
             self._validate_args()
@@ -227,15 +241,19 @@ class FactoryDataGenerator:
             try:
                 self._user_data = json.loads(self._args.user)
             except json.decoder.JSONDecodeError as e:
-                raise AssertionError("Provided wrong user data, this is not a JSON format! {}".format(e))
+                raise AssertionError(
+                    f"Provided wrong user data, this is not a JSON format! {e}"
+                )
         assert self._args.spake2_verifier or self._args.passcode, \
-            "Cannot find Spake2+ verifier, to generate a new one please provide passcode (--passcode)"
+                "Cannot find Spake2+ verifier, to generate a new one please provide passcode (--passcode)"
         assert (self._args.chip_cert_path or (self._args.dac_cert and self._args.pai_cert and self._args.dac_key)), \
-            "Cannot find paths to DAC or PAI certificates .der files. To generate a new ones please provide a path to chip-cert executable (--chip_cert_path)"
-        assert self._args.output.endswith(".json"), \
-            "Output path doesn't contain .json file path. ({})".format(self._args.output)
-        assert not (self._args.passcode in INVALID_PASSCODES), \
-            "Provided invalid passcode!"
+                "Cannot find paths to DAC or PAI certificates .der files. To generate a new ones please provide a path to chip-cert executable (--chip_cert_path)"
+        assert self._args.output.endswith(
+            ".json"
+        ), f"Output path doesn't contain .json file path. ({self._args.output})"
+        assert (
+            self._args.passcode not in INVALID_PASSCODES
+        ), "Provided invalid passcode!"
 
     def generate_json(self):
         """
@@ -252,15 +270,14 @@ class FactoryDataGenerator:
 
         """
         # generate missing data if needed
-        if not self._args.rd_uid:
-            if self._args.generate_rd_uid:
-                rd_uid = self._generate_rotating_device_uid()
-            else:
-                # rotating device ID unique ID was not provided, so do not store it in factory data.
-                rd_uid = None
-        else:
+        if self._args.rd_uid:
             rd_uid = HEX_PREFIX + self._args.rd_uid
 
+        elif self._args.generate_rd_uid:
+            rd_uid = self._generate_rotating_device_uid()
+        else:
+            # rotating device ID unique ID was not provided, so do not store it in factory data.
+            rd_uid = None
         if not self._args.spake2_verifier:
             spake_2_verifier = self._generate_spake2_verifier()
         else:
@@ -270,15 +287,17 @@ class FactoryDataGenerator:
         spake_2_salt = self._args.spake2_salt
 
         if self._args.chip_cert_path:
-            certs = gen_test_certs(self._args.chip_cert_path,
-                                   self._args.output[:self._args.output.rfind("/")],
-                                   self._args.vendor_id,
-                                   self._args.product_id,
-                                   self._args.vendor_name + "_" + self._args.product_name,
-                                   self._args.gen_cd,
-                                   self._args.cd_type,
-                                   self._args.paa_cert,
-                                   self._args.paa_key)
+            certs = gen_test_certs(
+                self._args.chip_cert_path,
+                self._args.output[: self._args.output.rfind("/")],
+                self._args.vendor_id,
+                self._args.product_id,
+                f"{self._args.vendor_name}_{self._args.product_name}",
+                self._args.gen_cd,
+                self._args.cd_type,
+                self._args.paa_cert,
+                self._args.paa_key,
+            )
             dac_cert = certs.dac_cert
             pai_cert = certs.pai_cert
             dac_key = certs.dac_key
@@ -290,13 +309,13 @@ class FactoryDataGenerator:
         # try to read DAC public and private keys
         dac_priv_key = get_raw_private_key_der(dac_key, self._args.dac_key_password)
         if dac_priv_key is None:
-            log.error("Cannot read DAC keys from : {}".format(dac_key))
+            log.error(f"Cannot read DAC keys from : {dac_key}")
             sys.exit(-1)
 
         try:
             json_file = open(self._args.output, "w+")
         except FileNotFoundError:
-            print("Cannot create JSON file in this location: {}".format(self._args.output))
+            print(f"Cannot create JSON file in this location: {self._args.output}")
             sys.exit(-1)
         with json_file:
             # serialize data
@@ -341,17 +360,19 @@ class FactoryDataGenerator:
                 if is_json_valid:
                     json_file.write(json_object)
             except IOError:
-                log.error("Cannot save output file into directory: {}".format(self._args.output))
+                log.error(f"Cannot save output file into directory: {self._args.output}")
 
             if self._args.generate_onboarding:
                 self._generate_onboarding_data()
 
     def _add_entry(self, name: str, value: any):
         """ Add single entry to list of tuples ("key", "value") """
-        if (isinstance(value, bytes) or isinstance(value, bytearray)):
+        if isinstance(value, (bytes, bytearray)):
             value = HEX_PREFIX + value.hex()
         if value or (isinstance(value, int) and value == 0):
-            log.debug("Adding entry '{}' with size {} and type {}".format(name, sys.getsizeof(value), type(value)))
+            log.debug(
+                f"Adding entry '{name}' with size {sys.getsizeof(value)} and type {type(value)}"
+            )
             self._factory_data.append((name, value))
 
     def _generate_spake2_verifier(self):
@@ -362,7 +383,7 @@ class FactoryDataGenerator:
         """ If rotating device unique ID has not been provided it should be generated """
         log.warning("Cannot find rotating device UID in provided arguments list. A new one will be generated.")
         rdu = secrets.token_bytes(16)
-        log.info("\n\nThe new rotate device UID: {}\n".format(rdu.hex()))
+        log.info(f"\n\nThe new rotate device UID: {rdu.hex()}\n")
         return rdu
 
     def _validate_output_json(self, output_json: str):
@@ -378,7 +399,7 @@ class FactoryDataGenerator:
                 validator = jsonschema.Draft202012Validator(schema=schema)
                 validator.validate(instance=json.loads(output_json))
         except IOError:
-            log.error("Provided JSON schema file is wrong: {}".format(self._args.schema))
+            log.error(f"Provided JSON schema file is wrong: {self._args.schema}")
             return False
         else:
             log.info("Validate OK")
@@ -388,8 +409,7 @@ class FactoryDataGenerator:
         log.debug("Processing der file...")
         try:
             with open(path, 'rb') as f:
-                data = f.read()
-                return data
+                return f.read()
         except IOError as e:
             log.error(e)
             raise e
@@ -402,8 +422,10 @@ class FactoryDataGenerator:
                                      vid=self._args.vendor_id,
                                      pid=self._args.product_id)
         with open(self._args.output[:-len(".json")] + ".txt", "w") as manual_code_file:
-            manual_code_file.write("Manualcode : " + setup_payload.generate_manualcode() + "\n")
-            manual_code_file.write("QRCode : " + setup_payload.generate_qrcode())
+            manual_code_file.write(
+                f"Manualcode : {setup_payload.generate_manualcode()}" + "\n"
+            )
+            manual_code_file.write(f"QRCode : {setup_payload.generate_qrcode()}")
         qr = qrcode.make(setup_payload.generate_qrcode())
         qr.save(self._args.output[:-len(".json")] + ".png")
 

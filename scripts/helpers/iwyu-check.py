@@ -127,7 +127,7 @@ def main(compile_commands_glob, scanning_destination, mapping_file_dir,
         for key in json_data:
             find_re = re.search(r'^.*/src/platform*?\/(.*)/.*$', key['file'])
             if find_re is not None:
-                platform = find_re.group(1)
+                platform = find_re[1]
                 break
         if not platform:
             logging.error("Can't find platform")
@@ -151,12 +151,19 @@ def main(compile_commands_glob, scanning_destination, mapping_file_dir,
         # TODO: Add another platform for easy scanning
         # Actually works scanning for platform: tizen, darwin, linux other not tested yet.
 
-        command_arr = [
-            iwyu,
-            "-p", compile_commands_path, scanning_destination,
-            "--", iwyu_args,
-            "-Xiwyu", "--mapping_file=" + mapping_file_dir + "/iwyu.imp",
-        ] + platform_clang_args + [clang_args]
+        command_arr = (
+            [
+                iwyu,
+                "-p",
+                compile_commands_path,
+                scanning_destination,
+                "--",
+                iwyu_args,
+                "-Xiwyu",
+                f"--mapping_file={mapping_file_dir}/iwyu.imp",
+            ]
+            + platform_clang_args
+        ) + [clang_args]
 
         logging.info("Used compile commands: %s", compile_commands)
         logging.info("Scanning includes for platform: %s", platform)

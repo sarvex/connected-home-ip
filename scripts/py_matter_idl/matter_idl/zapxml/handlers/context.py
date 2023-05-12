@@ -98,10 +98,7 @@ class Context:
         if not self.file_name:
             return None
         meta = self.GetCurrentLocationMeta()
-        if not meta:
-            return None
-
-        return f"{self.file_name}:{meta.line}:{meta.column}"
+        return None if not meta else f"{self.file_name}:{meta.line}:{meta.column}"
 
     def GetGlobalAttribute(self, code):
         if code in self._global_attributes:
@@ -125,11 +122,10 @@ class Context:
     def MarkTagNotHandled(self):
         path = str(self.path)
         if path not in self._not_handled:
-            msg = "TAG %s was not handled/recognized" % path
+            msg = f"TAG {path} was not handled/recognized"
 
-            where = self.ParseLogLocation()
-            if where:
-                msg = msg + " at " + where
+            if where := self.ParseLogLocation():
+                msg = f"{msg} at {where}"
 
             logging.warning(msg)
             self._not_handled.add(path)

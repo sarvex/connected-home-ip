@@ -50,7 +50,7 @@ class GenioBuilder(GnBuilder):
     def build_outputs(self):
         items = {}
         for extension in ['out', 'out.map', 'bin']:
-            name = '%s.%s' % (self.app.AppNamePrefix(), extension)
+            name = f'{self.app.AppNamePrefix()}.{extension}'
             items[name] = os.path.join(self.output_dir, name)
 
         return items

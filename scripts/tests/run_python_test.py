@@ -40,7 +40,7 @@ MATTER_DEVELOPMENT_PAA_ROOT_CERTS = "credentials/development/paa-root-certs"
 def EnqueueLogOutput(fp, tag, q):
     for line in iter(fp.readline, b''):
         timestamp = time.time()
-        if len(line) > len('[1646290606.901990]') and line[0:1] == b'[':
+        if len(line) > len('[1646290606.901990]') and line[:1] == b'[':
             try:
                 timestamp = float(line[1:18].decode())
                 line = line[19:]
@@ -91,26 +91,26 @@ def main(app: str, factoryreset: bool, app_args: str, script: str, script_args: 
         if retcode != 0:
             raise Exception("Failed to remove /tmp/chip* for factory reset.")
 
-        print("Contents of test directory: %s" % os.getcwd())
+        print(f"Contents of test directory: {os.getcwd()}")
         print(subprocess.check_output(["ls -l"], shell=True).decode('us-ascii'))
 
-        # Remove native app KVS if that was used
-        kvs_match = re.search(r"--KVS (?P<kvs_path>[^ ]+)", app_args)
-        if kvs_match:
-            kvs_path_to_remove = kvs_match.group("kvs_path")
-            retcode = subprocess.call("rm -f %s" % kvs_path_to_remove, shell=True)
-            print("Trying to remove KVS path %s" % kvs_path_to_remove)
+        if kvs_match := re.search(r"--KVS (?P<kvs_path>[^ ]+)", app_args):
+            kvs_path_to_remove = kvs_match["kvs_path"]
+            retcode = subprocess.call(f"rm -f {kvs_path_to_remove}", shell=True)
+            print(f"Trying to remove KVS path {kvs_path_to_remove}")
             if retcode != 0:
-                raise Exception("Failed to remove %s for factory reset." % kvs_path_to_remove)
+                raise Exception(f"Failed to remove {kvs_path_to_remove} for factory reset.")
 
-        # Remove Python test admin storage if provided
-        storage_match = re.search(r"--storage-path (?P<storage_path>[^ ]+)", script_args)
-        if storage_match:
-            storage_path_to_remove = storage_match.group("storage_path")
-            retcode = subprocess.call("rm -f %s" % storage_path_to_remove, shell=True)
-            print("Trying to remove storage path %s" % storage_path_to_remove)
+        if storage_match := re.search(
+            r"--storage-path (?P<storage_path>[^ ]+)", script_args
+        ):
+            storage_path_to_remove = storage_match["storage_path"]
+            retcode = subprocess.call(f"rm -f {storage_path_to_remove}", shell=True)
+            print(f"Trying to remove storage path {storage_path_to_remove}")
             if retcode != 0:
-                raise Exception("Failed to remove %s for factory reset." % storage_path_to_remove)
+                raise Exception(
+                    f"Failed to remove {storage_path_to_remove} for factory reset."
+                )
 
     coloredlogs.install(level='INFO')
 
@@ -119,15 +119,18 @@ def main(app: str, factoryreset: bool, app_args: str, script: str, script_args: 
 
     app_process = None
     if app:
-        if not os.path.exists(app):
-            if app is None:
-                raise FileNotFoundError(f"{app} not found")
+        if not os.path.exists(app) and app is None:
+            raise FileNotFoundError(f"{app} not found")
         app_args = [app] + shlex.split(app_args)
         logging.info(f"Execute: {app_args}")
         app_process = subprocess.Popen(
             app_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
         DumpProgramOutputToQueue(
-            log_cooking_threads, Fore.GREEN + "APP " + Style.RESET_ALL, app_process, log_queue)
+            log_cooking_threads,
+            f"{Fore.GREEN}APP {Style.RESET_ALL}",
+            app_process,
+            log_queue,
+        )
 
     script_command = [script, "--paa-trust-store-path", os.path.join(DEFAULT_CHIP_ROOT, MATTER_DEVELOPMENT_PAA_ROOT_CERTS),
                       '--log-format', '%(message)s'] + shlex.split(script_args)
@@ -148,8 +151,12 @@ def main(app: str, factoryreset: bool, app_args: str, script: str, script_args: 
     logging.info(f"Execute: {final_script_command}")
     test_script_process = subprocess.Popen(
         final_script_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    DumpProgramOutputToQueue(log_cooking_threads, Fore.GREEN + "TEST" + Style.RESET_ALL,
-                             test_script_process, log_queue)
+    DumpProgramOutputToQueue(
+        log_cooking_threads,
+        f"{Fore.GREEN}TEST{Style.RESET_ALL}",
+        test_script_process,
+        log_queue,
+    )
 
     test_script_exit_code = test_script_process.wait()
 

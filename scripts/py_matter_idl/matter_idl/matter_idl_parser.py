@@ -25,9 +25,7 @@ from matter_idl.matter_idl_types import (Attribute, AttributeInstantiation, Attr
 
 
 def UnionOfAllFlags(flags_list):
-    if not flags_list:
-        return None
-    return functools.reduce(lambda a, b: a | b, flags_list)
+    return functools.reduce(lambda a, b: a | b, flags_list) if flags_list else None
 
 
 class PrefixCppDocComment:
@@ -58,8 +56,7 @@ class PrefixCppDocComment:
         for cluster in idl.clusters:
             yield cluster
 
-            for command in cluster.commands:
-                yield command
+            yield from cluster.commands
 
     def __repr__(self):
         return ("PREFIXDoc: %r at %r" % (self.value, self.start_pos))
@@ -138,10 +135,7 @@ class MatterIdlTransformer(Transformer):
             raise Exception("Unexpected argument counts")
 
         n = tokens[0].value
-        if n.startswith('0x'):
-            return int(n[2:], 16)
-        else:
-            return int(n)
+        return int(n[2:], 16) if n.startswith('0x') else int(n)
 
     @v_args(inline=True)
     def negative_integer(self, value):
@@ -238,7 +232,7 @@ class MatterIdlTransformer(Transformer):
     def event_fabric_sensitive(self, _):
         return EventQuality.FABRIC_SENSITIVE
 
-    def event_qualities(selt, qualities):
+    def event_qualities(self, qualities):
         return UnionOfAllFlags(qualities) or EventQuality.NONE
 
     def timed_command(self, _):
@@ -294,14 +288,14 @@ class MatterIdlTransformer(Transformer):
 
         meta = None if self.skip_meta else ParseMetaData(meta)
 
-        cmd = Command(
+        return Command(
             parse_meta=meta,
             qualities=args[0],
-            input_param=args[2], output_param=args[3], code=args[4],
+            input_param=args[2],
+            output_param=args[3],
+            code=args[4],
             **args[1],
         )
-
-        return cmd
 
     def event_access(self, privilege):
         return privilege[0]

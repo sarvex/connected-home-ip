@@ -32,7 +32,7 @@ def get_file_from_pigweed(name):
 def run_command(command):
     returncode = -1
     command_log = b''
-    print("Running {}".format(command))
+    print(f"Running {command}")
     with Popen(command, cwd=os.getcwd(), stdout=PIPE, stderr=PIPE) as process:
         for line in process.stdout:
             command_log += line
@@ -63,7 +63,7 @@ def build_darwin_framework(args):
         args.project_path,
         '-derivedDataPath',
         abs_path,
-        "ARCHS={}".format(args.target_arch),
+        f"ARCHS={args.target_arch}",
     ]
 
     if args.target_sdk != "macosx":
@@ -84,8 +84,8 @@ def build_darwin_framework(args):
         'CHIP_IS_CLANG': args.clang,
         'CHIP_ENABLE_ENCODING_SENTINEL_ENUM_VALUES': args.enable_encoding_sentinel_enum_values
     }
-    for option in options:
-        command += ["{}={}".format(option, "YES" if options[option] else "NO")]
+    for option, value in options.items():
+        command += [f'{option}={"YES" if value else "NO"}']
 
     # For now disable unguarded-availability-new warnings because we
     # internally use APIs that we are annotating as only available on
@@ -96,8 +96,8 @@ def build_darwin_framework(args):
 
     if args.clang:
         command += [
-            "CC={}".format(get_file_from_pigweed("clang")),
-            "CXX={}".format(get_file_from_pigweed("clang++")),
+            f'CC={get_file_from_pigweed("clang")}',
+            f'CXX={get_file_from_pigweed("clang++")}',
             "COMPILER_INDEX_STORE_ENABLE=NO",
             "CLANG_ENABLE_MODULES=NO",
         ]
@@ -122,7 +122,7 @@ def build_darwin_framework(args):
 
     command += ["OTHER_CFLAGS=" + ' '.join(cflags), "OTHER_LDFLAGS=" + ' '.join(ldflags)]
     command_result = run_command(command)
-    print("Build Framework Result: {}".format(command_result))
+    print(f"Build Framework Result: {command_result}")
     exit(command_result)
 
 

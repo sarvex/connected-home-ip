@@ -54,8 +54,7 @@ class WebSocketRunner(TestRunner):
         self._server = None
 
     async def execute(self, request):
-        instance = self._client
-        if instance:
+        if instance := self._client:
             await instance.send(request)
             return await instance.recv()
         return None
@@ -84,17 +83,18 @@ class WebSocketRunner(TestRunner):
             await instance.close()
 
     async def _start_server(self, command):
-        instance = None
-        if command:
-            instance = subprocess.Popen(command, stdout=subprocess.DEVNULL)
-        return instance
+        return (
+            subprocess.Popen(command, stdout=subprocess.DEVNULL)
+            if command
+            else None
+        )
 
     async def _stop_server(self, instance):
         if instance:
             instance.kill()
 
     def _make_server_connection_url(self, address: str, port: int):
-        return 'ws://' + address + ':' + str(port)
+        return f'ws://{address}:{port}'
 
     def _make_server_startup_command(self, path: str, arguments: str, port: int):
         if path is None:

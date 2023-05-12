@@ -73,7 +73,7 @@ class EventHandler(BaseHandler):
         elif attrs['priority'] == 'critical':
             priority = EventPriority.CRITICAL
         else:
-            raise Exception("Unknown event priority: %s" % attrs['priority'])
+            raise Exception(f"Unknown event priority: {attrs['priority']}")
 
         self._event = Event(
             priority=priority,
@@ -129,9 +129,8 @@ class AttributeHandler(BaseHandler):
     def GetNextProcessor(self, name: str, attrs):
         if name.lower() == 'access':
             # Modifier not currently used: fabric scoped exists on the structure itself.
-            if 'modifier' in attrs:
-                if attrs['modifier'] != 'fabric-scoped':
-                    raise Exception("UNKNOWN MODIFIER: %s" % attrs['modifier'])
+            if 'modifier' in attrs and attrs['modifier'] != 'fabric-scoped':
+                raise Exception(f"UNKNOWN MODIFIER: {attrs['modifier']}")
 
             if ('role' in attrs) or ('privilege' in attrs):
                 role = AttrsToAccessPrivilege(attrs)
@@ -261,8 +260,7 @@ class EnumHandler(BaseHandler, IdlPostProcessor):
             return BaseHandler(self.context, handled=HandledDepth.SINGLE_TAG)
         elif name.lower() == 'cluster':
             if self._cluster_code is not None:
-                raise Exception(
-                    'Multiple cluster codes for enum %s' % self._enum.name)
+                raise Exception(f'Multiple cluster codes for enum {self._enum.name}')
             self._cluster_code = ParseInt(attrs['code'])
             return BaseHandler(self.context, handled=HandledDepth.SINGLE_TAG)
         else:
@@ -369,18 +367,10 @@ class CommandHandler(BaseHandler):
 
             name = attrs['name']
 
-            if name.endswith('Request'):
-                request_name = name
-            else:
-                request_name = name+'Request'
-
+            request_name = name if name.endswith('Request') else f'{name}Request'
             self._struct.name = request_name
 
-            if 'response' in attrs:
-                response_name = attrs['response']
-            else:
-                response_name = 'DefaultResponse'
-
+            response_name = attrs['response'] if 'response' in attrs else 'DefaultResponse'
             self._command = Command(
                 name=name,
                 code=ParseInt(attrs['code']),
@@ -463,14 +453,13 @@ class ClusterGlobalAttributeHandler(BaseHandler):
         self._code = code
 
     def GetNextProcessor(self, name: str, attrs):
-        if name.lower() == 'featurebit':
-            # It is uncler what featurebits mean. likely a bitmap should be created
-            # here, however only one such example exists currently: door-lock-cluster.xml
-            LOGGER.info('Ignoring featurebit tag for global attribute 0x%X (%d)' % (
-                self._code, self._code))
-            return BaseHandler(self.context, handled=HandledDepth.SINGLE_TAG)
-        else:
+        if name.lower() != 'featurebit':
             return BaseHandler(self.context)
+        # It is uncler what featurebits mean. likely a bitmap should be created
+        # here, however only one such example exists currently: door-lock-cluster.xml
+        LOGGER.info('Ignoring featurebit tag for global attribute 0x%X (%d)' % (
+            self._code, self._code))
+        return BaseHandler(self.context, handled=HandledDepth.SINGLE_TAG)
 
     def FinalizeProcessing(self, idl: Idl):
         for attribute in self._cluster.attributes:
@@ -515,7 +504,7 @@ class ClusterHandler(BaseHandler):
             return CommandHandler(self.context, self._cluster, attrs)
         elif name.lower() == 'description':
             return DescriptionHandler(self.context, self._cluster)
-        elif name.lower() in ['define', 'domain', 'tag', 'client', 'server']:
+        elif name.lower() in {'define', 'domain', 'tag', 'client', 'server'}:
             # NOTE: we COULD use client and server to create separate definitions
             #       of each, but the usefulness of this is unclear as the definitions are
             #       likely identical and matter has no concept of differences between the two
@@ -599,17 +588,15 @@ class GlobalHandler(BaseHandler):
         super().__init__(context, handled=HandledDepth.SINGLE_TAG)
 
     def GetNextProcessor(self, name, attrs):
-        if name.lower() == 'attribute':
-            if attrs['side'].lower() == 'client':
+        if name.lower() != 'attribute':
+            return BaseHandler(self.context)
+        if attrs['side'].lower() == 'client':
                 # We expect to also have 'server' equivalent, so ignore client
                 # side attributes
-                LOGGER.debug(
-                    'Ignoring global client-side attribute %s' % (attrs['code']))
-                return BaseHandler(self.context, handled=HandledDepth.SINGLE_TAG)
+            LOGGER.debug(f"Ignoring global client-side attribute {attrs['code']}")
+            return BaseHandler(self.context, handled=HandledDepth.SINGLE_TAG)
 
-            return GlobalAttributeHandler(self.context, AttrsToAttribute(attrs))
-        else:
-            return BaseHandler(self.context)
+        return GlobalAttributeHandler(self.context, AttrsToAttribute(attrs))
 
     def FinalizeProcessing(self, idl: Idl):
         global_attributes = self.context.GetGlobalAttributes()

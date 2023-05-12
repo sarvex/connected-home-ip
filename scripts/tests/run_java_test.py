@@ -54,52 +54,47 @@ def main(app: str, app_args: str, tool_path: str, tool_cluster: str, tool_args: 
         if retcode != 0:
             raise Exception("Failed to remove /tmp/chip* for factory reset.")
 
-        print("Contents of test directory: %s" % os.getcwd())
+        print(f"Contents of test directory: {os.getcwd()}")
         print(subprocess.check_output(["ls -l"], shell=True).decode('us-ascii'))
 
-        # Remove native app KVS if that was used
-        kvs_match = re.search(r"--KVS (?P<kvs_path>[^ ]+)", app_args)
-        if kvs_match:
-            kvs_path_to_remove = kvs_match.group("kvs_path")
-            retcode = subprocess.call("rm -f %s" % kvs_path_to_remove, shell=True)
-            print("Trying to remove KVS path %s" % kvs_path_to_remove)
+        if kvs_match := re.search(r"--KVS (?P<kvs_path>[^ ]+)", app_args):
+            kvs_path_to_remove = kvs_match["kvs_path"]
+            retcode = subprocess.call(f"rm -f {kvs_path_to_remove}", shell=True)
+            print(f"Trying to remove KVS path {kvs_path_to_remove}")
             if retcode != 0:
-                raise Exception("Failed to remove %s for factory reset." % kvs_path_to_remove)
+                raise Exception(f"Failed to remove {kvs_path_to_remove} for factory reset.")
 
     coloredlogs.install(level='INFO')
 
     log_queue = queue.Queue()
     log_cooking_threads = []
 
-    if tool_path:
-        if not os.path.exists(tool_path):
-            if tool_path is None:
-                raise FileNotFoundError(f"{tool_path} not found")
+    if tool_path and not os.path.exists(tool_path) and tool_path is None:
+        raise FileNotFoundError(f"{tool_path} not found")
 
     app_process = None
     if app:
-        if not os.path.exists(app):
-            if app is None:
-                raise FileNotFoundError(f"{app} not found")
+        if not os.path.exists(app) and app is None:
+            raise FileNotFoundError(f"{app} not found")
         app_args = [app] + shlex.split(app_args)
         logging.info(f"Execute: {app_args}")
         app_process = subprocess.Popen(
             app_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
         DumpProgramOutputToQueue(
-            log_cooking_threads, Fore.GREEN + "APP " + Style.RESET_ALL, app_process, log_queue)
+            log_cooking_threads,
+            f"{Fore.GREEN}APP {Style.RESET_ALL}",
+            app_process,
+            log_queue,
+        )
 
-    command = ['java', '-Djava.library.path=' + tool_path + '/lib/jni', '-jar', tool_path + '/bin/java-matter-controller']
+    command = [
+        'java',
+        f'-Djava.library.path={tool_path}/lib/jni',
+        '-jar',
+        f'{tool_path}/bin/java-matter-controller',
+    ]
 
-    if tool_cluster == 'pairing':
-        logging.info("Testing pairing cluster")
-
-        test = CommissioningTest(log_cooking_threads, log_queue, command, tool_args)
-        try:
-            test.RunTest()
-        except Exception as e:
-            logging.error(e)
-            sys.exit(1)
-    elif tool_cluster == 'discover':
+    if tool_cluster == 'discover':
         logging.info("Testing discover cluster")
 
         test = DiscoverTest(log_cooking_threads, log_queue, command, tool_args)
@@ -118,6 +113,15 @@ def main(app: str, app_args: str, tool_path: str, tool_cluster: str, tool_args: 
             logging.error(e)
             sys.exit(1)
 
+    elif tool_cluster == 'pairing':
+        logging.info("Testing pairing cluster")
+
+        test = CommissioningTest(log_cooking_threads, log_queue, command, tool_args)
+        try:
+            test.RunTest()
+        except Exception as e:
+            logging.error(e)
+            sys.exit(1)
     app_exit_code = 0
     if app_process:
         logging.warning("Stopping app with SIGINT")

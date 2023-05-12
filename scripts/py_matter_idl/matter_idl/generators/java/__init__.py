@@ -63,15 +63,12 @@ def _UnderlyingType(field: Field, context: TypeLookupContext) -> Optional[str]:
         actual = actual.base_type
 
     if isinstance(actual, BasicString):
-        if actual.is_binary:
-            return 'OctetString'
-        else:
-            return 'CharString'
+        return 'OctetString' if actual.is_binary else 'CharString'
     elif isinstance(actual, BasicInteger):
         if actual.is_signed:
-            return "Int{}s".format(actual.power_of_two_bits)
+            return f"Int{actual.power_of_two_bits}s"
         else:
-            return "Int{}u".format(actual.power_of_two_bits)
+            return f"Int{actual.power_of_two_bits}u"
     elif isinstance(actual, FundamentalType):
         if actual == FundamentalType.BOOL:
             return 'Boolean'
@@ -136,15 +133,12 @@ def _CppType(field: Field, context: TypeLookupContext) -> str:
 
     actual = ParseDataType(field.data_type, context)
     if isinstance(actual, BasicString):
-        if actual.is_binary:
-            return 'chip::ByteSpan'
-        else:
-            return 'chip::CharSpan'
+        return 'chip::ByteSpan' if actual.is_binary else 'chip::CharSpan'
     elif isinstance(actual, BasicInteger):
         if actual.is_signed:
-            return "int{}_t".format(actual.power_of_two_bits)
+            return f"int{actual.power_of_two_bits}_t"
         else:
-            return "uint{}_t".format(actual.power_of_two_bits)
+            return f"uint{actual.power_of_two_bits}_t"
     elif isinstance(actual, FundamentalType):
         if actual == FundamentalType.BOOL:
             return 'bool'
@@ -179,23 +173,17 @@ def GlobalNameToJavaName(name: str) -> str:
     if name in {'Int8u', 'Int8s', 'Int16u', 'Int16s'}:
         return 'Integer'
 
-    if name.startswith('Int'):
-        return 'Long'
-
-    # Double/Float/Booleans/CharString/OctetString
-    return name
+    return 'Long' if name.startswith('Int') else name
 
 
 def DelegatedCallbackName(attr: Attribute, context: TypeLookupContext) -> str:
     """
     Figure out what callback name to use for delegate callback construction.
     """
-    global_name = FieldToGlobalName(attr.definition, context)
+    if global_name := FieldToGlobalName(attr.definition, context):
+        return f'Delegated{GlobalNameToJavaName(global_name)}AttributeCallback'
 
-    if global_name:
-        return 'Delegated{}AttributeCallback'.format(GlobalNameToJavaName(global_name))
-
-    return 'Delegated{}Cluster{}AttributeCallback'.format(context.cluster.name, capitalcase(attr.definition.name))
+    return f'Delegated{context.cluster.name}Cluster{capitalcase(attr.definition.name)}AttributeCallback'
 
 
 def ChipClustersCallbackName(attr: Attribute, context: TypeLookupContext) -> str:
@@ -203,12 +191,10 @@ def ChipClustersCallbackName(attr: Attribute, context: TypeLookupContext) -> str
     Figure out what callback name to use when building a ChipCluster.*AttributeCallback
     in java codegen.
     """
-    global_name = FieldToGlobalName(attr.definition, context)
+    if global_name := FieldToGlobalName(attr.definition, context):
+        return f'ChipClusters.{GlobalNameToJavaName(global_name)}AttributeCallback'
 
-    if global_name:
-        return 'ChipClusters.{}AttributeCallback'.format(GlobalNameToJavaName(global_name))
-
-    return 'ChipClusters.{}Cluster.{}AttributeCallback'.format(context.cluster.name, capitalcase(attr.definition.name))
+    return f'ChipClusters.{context.cluster.name}Cluster.{capitalcase(attr.definition.name)}AttributeCallback'
 
 
 def CallbackName(attr: Attribute, context: TypeLookupContext) -> str:
@@ -221,21 +207,16 @@ def CallbackName(attr: Attribute, context: TypeLookupContext) -> str:
     For specific types (e.g. A struct) codegen will generate its own callback name
     specific to that type.
     """
-    global_name = FieldToGlobalName(attr.definition, context)
+    if global_name := FieldToGlobalName(attr.definition, context):
+        return f'CHIP{capitalcase(global_name)}AttributeCallback'
 
-    if global_name:
-        return 'CHIP{}AttributeCallback'.format(capitalcase(global_name))
-
-    return 'CHIP{}{}AttributeCallback'.format(
-        capitalcase(context.cluster.name),
-        capitalcase(attr.definition.name)
-    )
+    return f'CHIP{capitalcase(context.cluster.name)}{capitalcase(attr.definition.name)}AttributeCallback'
 
 
 def CommandCallbackName(command: Command, cluster: Cluster):
     if command.output_param.lower() == 'defaultsuccess':
         return 'DefaultSuccess'
-    return '{}Cluster{}'.format(cluster.name, command.output_param)
+    return f'{cluster.name}Cluster{command.output_param}'
 
 
 def attributesWithSupportedCallback(attrs, context: TypeLookupContext):
@@ -402,16 +383,16 @@ class EncodableValue:
         return result
 
     def get_underlying_struct(self):
-        s = self.context.find_struct(self.data_type.name)
-        if not s:
-            raise Exception("Struct %s not found" % self.data_type.name)
-        return s
+        if s := self.context.find_struct(self.data_type.name):
+            return s
+        else:
+            raise Exception(f"Struct {self.data_type.name} not found")
 
     def get_underlying_enum(self):
-        e = self.context.find_enum(self.data_type.name)
-        if not e:
-            raise Exception("Enum %s not found" % self.data_type.name)
-        return e
+        if e := self.context.find_enum(self.data_type.name):
+            return e
+        else:
+            raise Exception(f"Enum {self.data_type.name} not found")
 
     @property
     def boxed_java_type(self):
@@ -428,25 +409,13 @@ class EncodableValue:
                 raise Exception("Unknown fundamental type")
         elif isinstance(t, BasicInteger):
             # the >= 3 will include int24_t to be considered "long"
-            if t.byte_count >= 3:
-                return "Long"
-            else:
-                return "Integer"
+            return "Long" if t.byte_count >= 3 else "Integer"
         elif isinstance(t, BasicString):
-            if t.is_binary:
-                return "byte[]"
-            else:
-                return "String"
+            return "byte[]" if t.is_binary else "String"
         elif isinstance(t, IdlEnumType):
-            if t.base_type.byte_count >= 3:
-                return "Long"
-            else:
-                return "Integer"
+            return "Long" if t.base_type.byte_count >= 3 else "Integer"
         elif isinstance(t, IdlBitmapType):
-            if t.base_type.byte_count >= 3:
-                return "Long"
-            else:
-                return "Integer"
+            return "Long" if t.base_type.byte_count >= 3 else "Integer"
         else:
             return "Object"
 
@@ -471,15 +440,9 @@ class EncodableValue:
             else:
                 raise Exception("Unknown fundamental type")
         elif isinstance(t, BasicInteger):
-            if t.byte_count >= 3:
-                return "Ljava/lang/Long;"
-            else:
-                return "Ljava/lang/Integer;"
+            return "Ljava/lang/Long;" if t.byte_count >= 3 else "Ljava/lang/Integer;"
         elif isinstance(t, BasicString):
-            if t.is_binary:
-                return "[B"
-            else:
-                return "Ljava/lang/String;"
+            return "[B" if t.is_binary else "Ljava/lang/String;"
         elif isinstance(t, IdlEnumType):
             if t.base_type.byte_count >= 3:
                 return "Ljava/lang/Long;"
@@ -491,7 +454,7 @@ class EncodableValue:
             else:
                 return "Ljava/lang/Integer;"
         else:
-            return "Lchip/devicecontroller/ChipStructs${}Cluster{};".format(self.context.cluster.name, self.data_type.name)
+            return f"Lchip/devicecontroller/ChipStructs${self.context.cluster.name}Cluster{self.data_type.name};"
 
 
 def EncodableValueFrom(field: Field, context: TypeLookupContext) -> EncodableValue:

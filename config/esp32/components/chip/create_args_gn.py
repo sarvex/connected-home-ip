@@ -54,15 +54,15 @@ with open(compile_commands_path) as compile_commands_json:
         # Trim compiler, input and output
         compile_flags = compile_command.split()[1:-4]
 
-        replace = "-I%s" % args.idf_path
-        replace_with = "-isystem%s" % args.idf_path
+        replace = f"-I{args.idf_path}"
+        replace_with = f"-isystem{args.idf_path}"
 
-        compile_flags = list(map(lambda f: ('"%s"' % f).replace(
-            replace, replace_with), compile_flags))
+        compile_flags = list(
+            map(lambda f: f'"{f}"'.replace(replace, replace_with), compile_flags)
+        )
 
         if args.filter_out:
-            filter_out = list(map(lambda f: ('"%s"' % f),
-                              args.filter_out.split(';')))
+            filter_out = list(map(lambda f: f'"{f}"', args.filter_out.split(';')))
             compile_flags = [c for c in compile_flags if c not in filter_out]
 
         return compile_flags

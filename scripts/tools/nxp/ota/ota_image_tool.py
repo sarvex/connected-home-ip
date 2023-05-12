@@ -69,16 +69,13 @@ def generate_factory_data(args: object):
     Generate custom OTA payload from InputArgument derived objects. The payload is
     written in a temporary file that will be appended to args.input_files.
     """
-    fields = dict()
-
     if args.dac_key is not None:
         args.dac_key.generate_private_key(args.dac_key_password)
 
     data = [obj for key, obj in vars(args).items() if isinstance(obj, InputArgument)]
-    for arg in sorted(data, key=lambda x: x.key()):
-        fields.update({arg.key(): arg.encode()})
-
-    if fields:
+    if fields := {
+        arg.key(): arg.encode() for arg in sorted(data, key=lambda x: x.key())
+    }:
         writer = TLVWriter()
         writer.put(None, fields)
         payload = generate_header(TAG.FACTORY_DATA, len(writer.encoding))
@@ -119,7 +116,7 @@ def show_payload(args: object):
 
 def create_image(args: object):
     ota_image_tool.validate_header_attributes(args)
-    input_files = list()
+    input_files = []
 
     if args.factory_data:
         generate_factory_data(args)

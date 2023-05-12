@@ -69,19 +69,18 @@ class TestCaseStorage(GeneratorStorage):
             if expected.file_name == relative_path:
                 return os.path.join(TESTS_DIR, expected.golden_path)
 
-        self.checker.fail("Expected output %s not found" % relative_path)
+        self.checker.fail(f"Expected output {relative_path} not found")
         return None
 
     def get_existing_data(self, relative_path: str):
         self.checked_files.add(relative_path)
 
-        path = self.get_existing_data_path(relative_path)
-        if path:
+        if path := self.get_existing_data_path(relative_path):
             with open(path, 'rt') as golden:
                 return golden.read()
 
         # This will attempt a new write, causing a unit test failure
-        self.checker.fail("Expected output %s not found" % relative_path)
+        self.checker.fail(f"Expected output {relative_path} not found")
         return None
 
     def write_new_data(self, relative_path: str, content: str):
@@ -97,11 +96,14 @@ class TestCaseStorage(GeneratorStorage):
 
         # This will display actual diffs in the output files
         self.checker.assertEqual(
-            self.get_existing_data(relative_path), content, "Content of %s" % relative_path)
+            self.get_existing_data(relative_path),
+            content,
+            f"Content of {relative_path}",
+        )
 
         # Even if no diff, to be build system friendly, we do NOT expect any
         # actual data writes.
-        raise AssertionError("Unexpected write to %s" % relative_path)
+        raise AssertionError(f"Unexpected write to {relative_path}")
 
 
 @dataclass
@@ -124,14 +126,13 @@ class GeneratorTest:
             return BridgeGenerator(storage, idl)
         if self.generator_name.lower() == 'cpp-app':
             return CppApplicationGenerator(storage, idl)
-        if self.generator_name.lower() == 'custom-example-proto':
-            sys.path.append(os.path.abspath(
-                os.path.join(os.path.dirname(__file__), '../examples')))
-            from matter_idl_plugin import CustomGenerator
-            return CustomGenerator(storage, idl, package='com.matter.example.proto')
-        else:
+        if self.generator_name.lower() != 'custom-example-proto':
             raise Exception("Unknown generator for testing: %s",
                             self.generator_name.lower())
+        sys.path.append(os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '../examples')))
+        from matter_idl_plugin import CustomGenerator
+        return CustomGenerator(storage, idl, package='com.matter.example.proto')
 
     def run_test_cases(self, checker: unittest.TestCase):
         for test in self.test_cases:

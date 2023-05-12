@@ -68,7 +68,12 @@ class IMTest:
         logging.info(f"Execute: {java_command}")
         java_process = subprocess.Popen(
             java_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        DumpProgramOutputToQueue(self.thread_list, Fore.GREEN + "JAVA " + Style.RESET_ALL, java_process, self.queue)
+        DumpProgramOutputToQueue(
+            self.thread_list,
+            f"{Fore.GREEN}JAVA {Style.RESET_ALL}",
+            java_process,
+            self.queue,
+        )
         return java_process.wait()
 
     def TestCmdOnnetworkLongImWrite(self, nodeid, setuppin, discriminator, timeout):
@@ -76,7 +81,12 @@ class IMTest:
         logging.info(f"Execute: {java_command}")
         java_process = subprocess.Popen(
             java_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        DumpProgramOutputToQueue(self.thread_list, Fore.GREEN + "JAVA " + Style.RESET_ALL, java_process, self.queue)
+        DumpProgramOutputToQueue(
+            self.thread_list,
+            f"{Fore.GREEN}JAVA {Style.RESET_ALL}",
+            java_process,
+            self.queue,
+        )
         return java_process.wait()
 
     def TestCmdOnnetworkLongImRead(self, nodeid, setuppin, discriminator, timeout):
@@ -84,7 +94,12 @@ class IMTest:
         logging.info(f"Execute: {java_command}")
         java_process = subprocess.Popen(
             java_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        DumpProgramOutputToQueue(self.thread_list, Fore.GREEN + "JAVA " + Style.RESET_ALL, java_process, self.queue)
+        DumpProgramOutputToQueue(
+            self.thread_list,
+            f"{Fore.GREEN}JAVA {Style.RESET_ALL}",
+            java_process,
+            self.queue,
+        )
         return java_process.wait()
 
     def TestCmdOnnetworkLongImSubscribe(self, nodeid, setuppin, discriminator, timeout):
@@ -92,7 +107,12 @@ class IMTest:
         logging.info(f"Execute: {java_command}")
         java_process = subprocess.Popen(
             java_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        DumpProgramOutputToQueue(self.thread_list, Fore.GREEN + "JAVA " + Style.RESET_ALL, java_process, self.queue)
+        DumpProgramOutputToQueue(
+            self.thread_list,
+            f"{Fore.GREEN}JAVA {Style.RESET_ALL}",
+            java_process,
+            self.queue,
+        )
         return java_process.wait()
 
     def RunTest(self):

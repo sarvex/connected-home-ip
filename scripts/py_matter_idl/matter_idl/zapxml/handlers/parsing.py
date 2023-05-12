@@ -20,10 +20,7 @@ def ParseInt(value: str) -> int:
 
        Supports decimal or hex values prefixed with '0x'
     """
-    if value.startswith('0x'):
-        return int(value[2:], 16)
-    else:
-        return int(value)
+    return int(value[2:], 16) if value.startswith('0x') else int(value)
 
 
 def AttrsToAccessPrivilege(attrs) -> AccessPrivilege:
@@ -33,11 +30,7 @@ def AttrsToAccessPrivilege(attrs) -> AccessPrivilege:
 
     # XML seems to use both role and privilege to mean the same thing
     # they are used interchangeably
-    if 'role' in attrs:
-        role = attrs['role']
-    else:
-        role = attrs['privilege']
-
+    role = attrs['role'] if 'role' in attrs else attrs['privilege']
     if role.lower() == 'view':
         return AccessPrivilege.VIEW
     elif role.lower() == 'operate':

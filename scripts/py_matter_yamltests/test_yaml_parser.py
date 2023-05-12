@@ -80,16 +80,13 @@ class TestYamlParser(unittest.TestCase):
         # simply ensure there is no exceptions raise.
         parser_config = TestParserConfig(None, self._definitions)
         yaml_parser = TestParser(self._temp_file.name, parser_config)
-        count = 0
-        for idx, test_step in enumerate(yaml_parser.tests):
-            count += 1
-            pass
+        count = sum(1 for _ in yaml_parser.tests)
         self.assertEqual(count, 3)
 
     def test_config(self):
         parser_config = TestParserConfig(None, self._definitions)
         yaml_parser = TestParser(self._temp_file.name, parser_config)
-        for idx, test_step in enumerate(yaml_parser.tests):
+        for test_step in yaml_parser.tests:
             self.assertEqual(test_step.node_id, 0x12344321)
             self.assertEqual(test_step.cluster, 'Test')
             self.assertEqual(test_step.endpoint, 1)
@@ -100,7 +97,7 @@ class TestYamlParser(unittest.TestCase):
         parser_config = TestParserConfig(
             None, self._definitions, config_override)
         yaml_parser = TestParser(self._temp_file.name, parser_config)
-        for idx, test_step in enumerate(yaml_parser.tests):
+        for test_step in yaml_parser.tests:
             self.assertEqual(test_step.node_id, 12345)
             self.assertEqual(test_step.cluster, 'TestOverride')
             self.assertEqual(test_step.endpoint, 4)

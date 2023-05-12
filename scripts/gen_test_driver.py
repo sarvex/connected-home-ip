@@ -73,15 +73,12 @@ def main(argv):
     TEST_SUITE_RE = re.compile(r'\s*CHIP_REGISTER_TEST_SUITE\(([^)]*)\)')
 
     with open(options.input_file, 'r') as input_file:
-        for line in input_file.readlines():
-            match = TEST_SUITE_RE.match(line)
-            if not match:
-                continue
-
-            tests.append(match.group(1))
+        for line in input_file:
+            if match := TEST_SUITE_RE.match(line):
+                tests.append(match[1])
 
     if not tests:
-        print("ERROR: no tests found in '%s'" % input_file)
+        print(f"ERROR: no tests found in '{input_file}'")
         print("Did you forget to CHIP_REGISTER_TEST_SUITE?")
         return 1
 

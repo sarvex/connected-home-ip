@@ -36,7 +36,6 @@ from memdf import Config, DFs, SymbolDF
 
 
 def main(argv):
-    status = 0
     try:
         config: Config = memdf.collect.parse_args(
             {
@@ -54,7 +53,7 @@ def main(argv):
     except Exception as exception:
         raise exception
 
-    return status
+    return 0
 
 
 if __name__ == '__main__':

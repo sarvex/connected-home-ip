@@ -40,7 +40,7 @@ __LOG_LEVELS__ = {
 
 
 def CommaSeparate(items) -> str:
-    return ', '.join([x for x in items])
+    return ', '.join(list(items))
 
 
 def ValidateRepoPath(context, parameter, value):
@@ -67,8 +67,7 @@ def ValidateTargetNames(context, parameter, values):
     for value in values:
         if not any(target.StringIntoTargetParts(value.lower())
                    for target in build.targets.BUILD_TARGETS):
-            raise click.BadParameter(
-                "'%s' is not a valid target name." % value)
+            raise click.BadParameter(f"'{value}' is not a valid target name.")
     return values
 
 
@@ -154,7 +153,7 @@ before running this script.
     else:
         runner = ShellRunner(root=repo)
 
-    requested_targets = set([t.lower() for t in target])
+    requested_targets = {t.lower() for t in target}
     logging.info('Building targets: %s', CommaSeparate(requested_targets))
 
     context.obj = build.Context(

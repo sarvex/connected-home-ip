@@ -144,22 +144,22 @@ def main(context, dry_run, log_level, target, target_glob, target_skip_glob,
     elif runner == 'chip_tool_python':
         runtime = TestRunTime.CHIP_TOOL_PYTHON
 
-    if chip_tool is None and not runtime == TestRunTime.CHIP_REPL_PYTHON:
+    if chip_tool is None and runtime != TestRunTime.CHIP_REPL_PYTHON:
         # non yaml tests REQUIRE chip-tool. Yaml tests should not require chip-tool
         paths_finder = PathsFinder()
         chip_tool = paths_finder.get('chip-tool')
 
     if include_tags:
-        include_tags = set([TestTag.__members__[t] for t in include_tags])
+        include_tags = {TestTag.__members__[t] for t in include_tags}
 
     if exclude_tags:
-        exclude_tags = set([TestTag.__members__[t] for t in exclude_tags])
+        exclude_tags = {TestTag.__members__[t] for t in exclude_tags}
 
     # Figures out selected test that match the given name(s)
     if runtime == TestRunTime.CHIP_REPL_PYTHON:
-        all_tests = [test for test in chiptest.AllYamlTests()]
+        all_tests = list(chiptest.AllYamlTests())
     else:
-        all_tests = [test for test in chiptest.AllChipToolTests(chip_tool)]
+        all_tests = list(chiptest.AllChipToolTests(chip_tool))
 
     tests = all_tests
 
@@ -177,18 +177,19 @@ def main(context, dry_run, log_level, target, target_glob, target_skip_glob,
         for name in target:
             targeted = [test for test in all_tests if test.name.lower()
                         == name.lower()]
-            if len(targeted) == 0:
-                logging.error("Unknown target: %s" % name)
+            if not targeted:
+                logging.error(f"Unknown target: {name}")
             tests.extend(targeted)
 
     if target_glob:
         matcher = GlobMatcher(target_glob.lower())
         tests = [test for test in tests if matcher.matches(test.name.lower())]
 
-    if len(tests) == 0:
+    if not tests:
         logging.error("No targets match, exiting.")
-        logging.error("Valid targets are (case-insensitive): %s" %
-                      (", ".join(test.name for test in all_tests)))
+        logging.error(
+            f'Valid targets are (case-insensitive): {", ".join(test.name for test in all_tests)}'
+        )
         exit(1)
 
     if target_skip_glob:
@@ -215,7 +216,7 @@ def cmd_list(context):
         if tags:
             tags = f" ({tags})"
 
-        print("%s%s" % (test.name, tags))
+        print(f"{test.name}{tags}")
 
 
 @main.command(
@@ -322,20 +323,23 @@ def cmd_run(context, iterations, all_clusters_app, lock_app, ota_provider_app, o
     for i in range(iterations):
         logging.info("Starting iteration %d" % (i+1))
         for test in context.obj.tests:
-            if context.obj.include_tags:
-                if not (test.tags & context.obj.include_tags):
-                    logging.debug("Test %s not included" % test.name)
-                    continue
+            if context.obj.include_tags and not (
+                test.tags & context.obj.include_tags
+            ):
+                logging.debug(f"Test {test.name} not included")
+                continue
 
-            if context.obj.exclude_tags:
-                if test.tags & context.obj.exclude_tags:
-                    logging.debug("Test %s excluded" % test.name)
-                    continue
+            if (
+                context.obj.exclude_tags
+                and test.tags & context.obj.exclude_tags
+            ):
+                logging.debug(f"Test {test.name} excluded")
+                continue
 
             test_start = time.monotonic()
             try:
                 if context.obj.dry_run:
-                    logging.info("Would run test: %s" % test.name)
+                    logging.info(f"Would run test: {test.name}")
                     continue
 
                 logging.info('%-20s - Starting test' % (test.name))
